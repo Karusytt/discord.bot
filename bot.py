@@ -6,15 +6,33 @@ import time
 import os
 from dotenv import load_dotenv
 
+# Load .env only for local development
 load_dotenv()
 
-# Read token from environment variable
+# Read token and IDs from environment variables
 TOKEN = os.getenv("TOKEN")
-
-# Your other IDs
-CHANNEL_ID = 1436658440930856980
-GUILD_ID = 1436651319623684201
+CHANNEL_ID = int(os.getenv("CHANNEL_ID", 0))
+GUILD_ID = int(os.getenv("GUILD_ID", 0))
 COOLDOWN_SECONDS = 2 * 60 * 60
+
+# Basic safety checks before starting
+if not TOKEN:
+    print("ERROR: DISCORD_TOKEN not found in environment variables!")
+    print("Please add your Discord bot token to Replit/Railway Secrets.")
+    exit(1)
+
+if CHANNEL_ID == 0 or GUILD_ID == 0:
+    print("ERROR: CHANNEL_ID or GUILD_ID not set correctly!")
+    print("Please add these values to Replit/Railway Secrets as integers.")
+    exit(1)
+
+intents = discord.Intents.default()
+intents.messages = True
+intents.message_content = True
+intents.guilds = True
+intents.members = True
+
+bot = commands.Bot(command_prefix="!", intents=intents)
 
 
 ROLE_NAMES = {
@@ -249,4 +267,5 @@ if __name__ == "__main__":
         print("Please add these values to Replit Secrets.")
         exit(1)
     bot.run(TOKEN)
+
 
