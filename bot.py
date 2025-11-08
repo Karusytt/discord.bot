@@ -8,10 +8,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-TOKEN = "MTQzNjczNjMyMTE3ODY5Nzc3OQ.GPTmjE.5fzkGz90tGqYwpHIyA-2nFmAsGU7IrT4k-4Hs4"
+# Read token from environment variable
+TOKEN = os.getenv("TOKEN")
+
+# Your other IDs
 CHANNEL_ID = 1436658440930856980
 GUILD_ID = 1436651319623684201
-COOLDOWN_SECONDS = 2*60*60
+COOLDOWN_SECONDS = 2 * 60 * 60
+
 
 ROLE_NAMES = {
     "Lufthansa": "Lufthansa Pilot",
@@ -245,3 +249,4 @@ if __name__ == "__main__":
         print("Please add these values to Replit Secrets.")
         exit(1)
     bot.run(TOKEN)
+
