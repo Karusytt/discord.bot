@@ -1,6 +1,13 @@
 import os
+import random
+import asyncio
+import time
 from dotenv import load_dotenv
 
+import discord
+from discord.ext import tasks, commands
+
+# Load environment variables
 load_dotenv()  # Only for local testing
 
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -16,8 +23,7 @@ if CHANNEL_ID == 0 or GUILD_ID == 0:
     print("ERROR: CHANNEL_ID or GUILD_ID not set!")
     exit(1)
 
-
-
+# ----- Bot setup -----
 intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
@@ -26,7 +32,7 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-
+# ----- Main Data -----
 ROLE_NAMES = {
     "Lufthansa": "Lufthansa Pilot",
     "TAP": "TAP AirPortugal Pilot",
@@ -87,19 +93,13 @@ contracts = [
     {"airline": "EasyJet", "callsign": "EZY4217", "route": "Berlin (EDDB) ➡️ London Gatwick (EGKK)", "duration": "1h50m"},
 ]
 
+# ----- Variables -----
 locked_contracts = {}
 user_cooldowns = {}
 pilot_logs = {}
 last_sent_contract = None
 
-intents = discord.Intents.default()
-intents.messages = True
-intents.message_content = True
-intents.guilds = True
-intents.members = True
-
-bot = commands.Bot(command_prefix="!", intents=intents)
-
+# ----- Helper Functions -----
 def assign_aircraft(contract):
     dur = contract["duration"]
     if "h" in dur:
@@ -139,6 +139,7 @@ async def send_contract_to_channel(channel, contract):
     await message.edit(view=view)
     locked_contracts[message.id] = {"contract": contract, "accepted_by": None, "message": message}
 
+# ----- Button Class -----
 class AcceptButton(discord.ui.View):
     def __init__(self, contract, message):
         super().__init__(timeout=None)
@@ -210,6 +211,7 @@ class AcceptButton(discord.ui.View):
 
         await interaction.response.send_message("✅ You have accepted this contract!", ephemeral=True)
 
+# ----- Contract Loop -----
 @tasks.loop(seconds=60)
 async def send_contract_loop():
     global last_sent_contract
@@ -223,6 +225,7 @@ async def send_contract_loop():
         last_sent_contract = contract
         await send_contract_to_channel(channel, contract)
 
+# ----- Commands -----
 @bot.tree.command(name="logbook", description="Show your pilot logbook", guild=discord.Object(id=GUILD_ID))
 async def logbook(interaction: discord.Interaction):
     user_id = interaction.user.id
@@ -239,6 +242,7 @@ async def logbook(interaction: discord.Interaction):
     embed.set_footer(text=f"Total Flights: {len(logs)}")
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
+# ----- Events -----
 @bot.event
 async def on_ready():
     print(f"Bot is online as {bot.user}!")
@@ -249,17 +253,6 @@ async def on_ready():
     await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
     print("Commands synced successfully!")
 
+# ----- Run Bot -----
 if __name__ == "__main__":
-    if not TOKEN:
-        print("ERROR: DISCORD_TOKEN not found in environment variables!")
-        print("Please add your Discord bot token to Replit Secrets.")
-        exit(1)
-    if CHANNEL_ID == 0 or GUILD_ID == 0:
-        print("ERROR: CHANNEL_ID or GUILD_ID not found in environment variables!")
-        print("Please add these values to Replit Secrets.")
-        exit(1)
     bot.run(TOKEN)
-
-
-
-
