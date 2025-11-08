@@ -1,30 +1,21 @@
-import discord
-from discord.ext import tasks, commands
-import random
-import asyncio
-import time
 import os
 from dotenv import load_dotenv
 
-# Load .env only for local development
-load_dotenv()
+load_dotenv()  # only needed for local testing with .env
 
-# Read token and IDs from environment variables
-TOKEN = os.getenv("TOKEN")
+TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", 0))
 GUILD_ID = int(os.getenv("GUILD_ID", 0))
-COOLDOWN_SECONDS = 2 * 60 * 60
+COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 2*60*60))
 
-# Basic safety checks before starting
 if not TOKEN:
     print("ERROR: DISCORD_TOKEN not found in environment variables!")
-    print("Please add your Discord bot token to Replit/Railway Secrets.")
     exit(1)
 
 if CHANNEL_ID == 0 or GUILD_ID == 0:
-    print("ERROR: CHANNEL_ID or GUILD_ID not set correctly!")
-    print("Please add these values to Replit/Railway Secrets as integers.")
+    print("ERROR: CHANNEL_ID or GUILD_ID not found in environment variables!")
     exit(1)
+
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -267,5 +258,6 @@ if __name__ == "__main__":
         print("Please add these values to Replit Secrets.")
         exit(1)
     bot.run(TOKEN)
+
 
 
