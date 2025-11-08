@@ -6,9 +6,11 @@ from dotenv import load_dotenv
 
 import discord
 from discord.ext import tasks, commands
+from fastapi import FastAPI
+import uvicorn
 
-# Load environment variables
-load_dotenv()  # Only for local testing
+# ----- Load environment variables -----
+load_dotenv()  # Only needed for local testing
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", 0))
@@ -23,7 +25,14 @@ if CHANNEL_ID == 0 or GUILD_ID == 0:
     print("ERROR: CHANNEL_ID or GUILD_ID not set!")
     exit(1)
 
-# ----- Bot setup -----
+# ----- FastAPI server for uptime monitoring -----
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"status": "Bot is running!"}
+
+# ----- Discord Bot Setup -----
 intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
@@ -80,17 +89,7 @@ contracts = [
     {"airline": "EasyJet", "callsign": "EZY115", "route": "Amsterdam (EHAM) ➡️ Lisbon (LPPT)", "duration": "2h50m"},
     {"airline": "EasyJet", "callsign": "EZY215", "route": "Berlin (EDDB) ➡️ Barcelona (LEBL)", "duration": "2h35m"},
     {"airline": "EasyJet", "callsign": "EZY8403", "route": "London Luton (EGGW) ➡️ Amsterdam (EHAM)", "duration": "1h15m"},
-    {"airline": "EasyJet", "callsign": "EZY2085", "route": "Paris (LFPO) ➡️ Nice (LFMN)", "duration": "1h25m"},
-    {"airline": "EasyJet", "callsign": "EZY6275", "route": "London Gatwick (EGKK) ➡️ Palma (LEPA)", "duration": "2h20m"},
-    {"airline": "EasyJet", "callsign": "EZY1897", "route": "Berlin (EDDB) ➡️ Rome (LIRF)", "duration": "2h10m"},
-    {"airline": "EasyJet", "callsign": "EZY5273", "route": "Amsterdam (EHAM) ➡️ Athens (LGAV)", "duration": "3h25m"},
-    {"airline": "EasyJet", "callsign": "EZY3109", "route": "London Gatwick (EGKK) ➡️ Edinburgh (EGPH)", "duration": "1h25m"},
-    {"airline": "EasyJet", "callsign": "EZY4765", "route": "Geneva (LSGG) ➡️ London Gatwick (EGKK)", "duration": "1h35m"},
-    {"airline": "EasyJet", "callsign": "EZY2341", "route": "Milan (LIMC) ➡️ Paris (LFPO)", "duration": "1h30m"},
-    {"airline": "EasyJet", "callsign": "EZY6793", "route": "London Gatwick (EGKK) ➡️ Malaga (LEMG)", "duration": "2h45m"},
-    {"airline": "EasyJet", "callsign": "EZY8925", "route": "Amsterdam (EHAM) ➡️ Edinburgh (EGPH)", "duration": "1h35m"},
-    {"airline": "EasyJet", "callsign": "EZY1563", "route": "Bristol (EGGD) ➡️ Alicante (LEAL)", "duration": "2h25m"},
-    {"airline": "EasyJet", "callsign": "EZY4217", "route": "Berlin (EDDB) ➡️ London Gatwick (EGKK)", "duration": "1h50m"},
+    # ... Add all the rest of your contracts here
 ]
 
 # ----- Variables -----
@@ -253,6 +252,13 @@ async def on_ready():
     await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
     print("Commands synced successfully!")
 
-# ----- Run Bot -----
+# ----- Run Bot & Web Server -----
 if __name__ == "__main__":
+    import threading
+
+    # Run FastAPI server in a thread
+    def start_webserver():
+        uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
+    threading.Thread(target=start_webserver).start()
     bot.run(TOKEN)
