@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()  # only needed for local testing with .env
+load_dotenv()  # Only for local testing
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", 0))
@@ -13,8 +13,9 @@ if not TOKEN:
     exit(1)
 
 if CHANNEL_ID == 0 or GUILD_ID == 0:
-    print("ERROR: CHANNEL_ID or GUILD_ID not found in environment variables!")
+    print("ERROR: CHANNEL_ID or GUILD_ID not set!")
     exit(1)
+
 
 
 intents = discord.Intents.default()
@@ -258,6 +259,7 @@ if __name__ == "__main__":
         print("Please add these values to Replit Secrets.")
         exit(1)
     bot.run(TOKEN)
+
 
 
 
