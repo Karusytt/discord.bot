@@ -228,10 +228,10 @@ class AcceptButton(discord.ui.View):
         await interaction.response.send_message("✅ You have accepted this contract!", ephemeral=True)
 
 # ----- Contract Loop -----
-@tasks.loop(seconds=60)
+
+@tasks.loop(seconds=1)  # just a dummy value; actual timing handled inside loop
 async def send_contract_loop():
     global last_sent_contract
-    await asyncio.sleep(random.randint(0,10))
     channel = bot.get_channel(CHANNEL_ID)
     if channel:
         available_contracts = [c for c in contracts if c != last_sent_contract]
@@ -240,6 +240,10 @@ async def send_contract_loop():
         contract = random.choice(available_contracts)
         last_sent_contract = contract
         await send_contract_to_channel(channel, contract)
+
+    # Sleep randomly between 1 and 10 minutes
+    await asyncio.sleep(random.randint(60, 600))
+    
 
 # ----- Commands -----
 @bot.tree.command(name="logbook", description="Show your pilot logbook", guild=discord.Object(id=GUILD_ID))
@@ -279,3 +283,4 @@ if __name__ == "__main__":
 
     threading.Thread(target=start_webserver).start()
     bot.run(TOKEN)
+
