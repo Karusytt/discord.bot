@@ -20,7 +20,6 @@ COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 2*60*60))
 if not TOKEN:
     print("ERROR: DISCORD_TOKEN not found in environment variables!")
     exit(1)
-
 if CHANNEL_ID == 0 or GUILD_ID == 0:
     print("ERROR: CHANNEL_ID or GUILD_ID not set!")
     exit(1)
@@ -46,6 +45,12 @@ ROLE_NAMES = {
     "Lufthansa": "Lufthansa Pilot",
     "TAP": "TAP AirPortugal Pilot",
     "EasyJet": "EasyJet Pilot"
+}
+
+AIRLINE_COLORS = {
+    "Lufthansa": discord.Color.blue(),
+    "TAP": discord.Color.green(),
+    "EasyJet": discord.Color.red()
 }
 
 AIRCRAFTS = {
@@ -130,6 +135,22 @@ def assign_aircraft(contract):
     else:
         return random.choice(AIRCRAFTS[airline]["long"]) if AIRCRAFTS[airline]["long"] else random.choice(AIRCRAFTS[airline]["short"])
 
+def build_contract_embed(contract):
+    airline = contract["airline"]
+    color = AIRLINE_COLORS.get(airline, discord.Color.blue())
+    aircraft = assign_aircraft(contract)
+    embed = discord.Embed(
+        title="✈️ New Contract Available!",
+        color=color
+    )
+    embed.add_field(name="🏢 Airline", value=airline, inline=True)
+    embed.add_field(name="🆔 Callsign", value=f"`{contract['callsign']}`", inline=True)
+    embed.add_field(name="🗺️ Route", value=contract['route'], inline=False)
+    embed.add_field(name="⏱️ Duration", value=f"`{contract['duration']}`", inline=True)
+    embed.add_field(name="🛫 Aircraft", value=aircraft, inline=True)
+    embed.set_footer(text="Click the button to accept! Contract expires in 40 minutes.")
+    return embed
+
 # ----- Button Class -----
 class AcceptButton(discord.ui.View):
     def __init__(self, contract, message):
@@ -144,11 +165,6 @@ class AcceptButton(discord.ui.View):
         if self.locked:
             await interaction.response.send_message("❌ This contract is already taken!", ephemeral=True)
             return
-
-        if not isinstance(user, discord.Member):
-            await interaction.response.send_message("❌ This command can only be used in a server!", ephemeral=True)
-            return
-
         allowed_role_name = ROLE_NAMES.get(self.contract["airline"])
         user_roles = [r.name for r in user.roles]
         if allowed_role_name not in user_roles:
@@ -176,23 +192,18 @@ class AcceptButton(discord.ui.View):
 
         aircraft = assign_aircraft(self.contract)
 
-        embed_channel = discord.Embed(
-            title=f"✈️ Contract Accepted: {self.contract['callsign']}",
-            description=f"Airline: {self.contract['airline']}\nCallsign: {self.contract['callsign']}\nRoute: {self.contract['route']}\nDuration: {self.contract['duration']}\nAircraft: {aircraft}",
-            color=discord.Color.green()
-        )
+        # Update channel embed
+        embed_channel = build_contract_embed(self.contract)
+        embed_channel.color = discord.Color.green()
         embed_channel.add_field(name="Accepted by", value=user.mention, inline=False)
         embed_channel.set_footer(text="Contract is taken!")
         await self.message.edit(embed=embed_channel, view=self)
 
-        embed_dm = discord.Embed(
-            title=f"✈️ Contract Accepted: {self.contract['callsign']}",
-            description=f"Airline: {self.contract['airline']}\nCallsign: {self.contract['callsign']}\nRoute: {self.contract['route']}\nDuration: {self.contract['duration']}\nAircraft: {aircraft}",
-            color=discord.Color.green()
-        )
+        # DM user
+        embed_dm = build_contract_embed(self.contract)
+        embed_dm.color = discord.Color.green()
         embed_dm.add_field(name="Simbrief", value="Create a flight plan here: https://dispatch.simbrief.com/options/new", inline=False)
         embed_dm.set_footer(text="If you don't have a SimBrief account, create one to use the link!")
-
         try:
             await user.send(embed=embed_dm)
         except:
@@ -211,39 +222,24 @@ async def send_contract_to_channel(channel, contract):
         if role:
             role_mention = role.mention
 
-    aircraft = assign_aircraft(contract)
-    embed = discord.Embed(title="✈️ New Contract Available!", color=discord.Color.blue())
-    embed.add_field(name="Airline", value=contract['airline'], inline=True)
-    embed.add_field(name="Callsign", value=contract['callsign'], inline=True)
-    embed.add_field(name="Route", value=contract['route'], inline=False)
-    embed.add_field(name="Duration", value=contract['duration'], inline=True)
-    embed.add_field(name="Aircraft", value=aircraft, inline=True)
-    embed.set_footer(text="Click the button to accept!")
-
+    embed = build_contract_embed(contract)
     message = await channel.send(content=role_mention, embed=embed)
     view = AcceptButton(contract, message)
     await message.edit(view=view)
     locked_contracts[message.id] = {"contract": contract, "accepted_by": None, "message": message}
 
-    # ----- Handle expiration & deletion -----
+    # Expire & delete
     async def expire_and_delete(msg_id, msg):
-        # Wait 40 min, then expire if unaccepted
-        await asyncio.sleep(2400)
+        await asyncio.sleep(2400)  # 40 min
         if locked_contracts.get(msg_id) and locked_contracts[msg_id]["accepted_by"] is None:
-            expire_embed = discord.Embed(title="❌ Contract Expired", color=discord.Color.red())
-            expire_embed.add_field(name="Airline", value=contract['airline'], inline=True)
-            expire_embed.add_field(name="Callsign", value=contract['callsign'], inline=True)
-            expire_embed.add_field(name="Route", value=contract['route'], inline=False)
-            expire_embed.add_field(name="Duration", value=contract['duration'], inline=True)
-            expire_embed.add_field(name="Aircraft", value=aircraft, inline=True)
-            expire_embed.set_footer(text="This contract was not accepted in time.")
+            expire_embed = build_contract_embed(contract)
+            expire_embed.color = discord.Color.red()
+            expire_embed.set_footer(text="❌ This contract was not accepted in time.")
             try:
                 await msg.edit(embed=expire_embed, view=None)
             except:
                 pass
-
-        # Wait additional 20 min (total 1h) then delete
-        await asyncio.sleep(1200)
+        await asyncio.sleep(1200)  # 20 more min = total 1h
         try:
             await msg.delete()
             locked_contracts.pop(msg_id, None)
@@ -264,11 +260,9 @@ async def send_contract_loop():
         contract = random.choice(available_contracts)
         last_sent_contract = contract
         await send_contract_to_channel(channel, contract)
+    await asyncio.sleep(random.randint(60, 600))  # 1–10 min delay
 
-    # Sleep randomly between 1 and 10 minutes
-    await asyncio.sleep(random.randint(60, 600))
-
-# ----- Commands -----
+# ----- Logbook Command -----
 @bot.tree.command(name="logbook", description="Show your pilot logbook", guild=discord.Object(id=GUILD_ID))
 async def logbook(interaction: discord.Interaction):
     user_id = interaction.user.id
@@ -300,7 +294,6 @@ async def on_ready():
 if __name__ == "__main__":
     import threading
 
-    # Run FastAPI server in a thread
     def start_webserver():
         uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
 
