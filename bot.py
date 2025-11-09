@@ -9,6 +9,7 @@ import discord
 from discord.ext import tasks, commands
 from fastapi import FastAPI
 import uvicorn
+import threading
 
 # ----- Load environment variables -----
 load_dotenv()
@@ -32,11 +33,8 @@ app = FastAPI()
 def read_root():
     return {"status": "Bot is running!"}
 
-async def start_webserver():
-    """Start FastAPI web server asynchronously."""
-    config = uvicorn.Config(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)), log_level="info")
-    server = uvicorn.Server(config)
-    await server.serve()
+def run_webserver():
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8080)), log_level="info")
 
 # ----- Discord Bot Setup -----
 intents = discord.Intents.default()
@@ -66,7 +64,7 @@ AIRCRAFTS = {
     "EasyJet": {"short": ["A319", "A320", "A321neo"], "long": []}
 }
 
-# ----- All Contracts -----
+# ----- Contracts -----
 contracts = [
     # Lufthansa
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
@@ -125,7 +123,7 @@ locked_contracts = {}
 user_cooldowns = {}
 last_sent_contract = None
 
-# Persist logs
+# ----- Persist Logs -----
 LOGS_DIR = "data"
 os.makedirs(LOGS_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOGS_DIR, "pilot_logs.json")
@@ -135,7 +133,7 @@ def load_logs():
         try:
             with open(LOG_FILE, "r") as f:
                 return json.load(f)
-        except Exception:
+        except:
             print("Warning: Could not read pilot_logs.json, starting fresh.")
             return {}
     return {}
@@ -178,7 +176,7 @@ def build_contract_embed(contract):
     embed.add_field(name="🛫 Aircraft", value=aircraft, inline=True)
     embed.set_footer(text="Click the button to accept! Contract expires in 40 minutes.")
     return embed
-
+    
 # ----- Accept Button -----
 class AcceptButton(discord.ui.View):
     def __init__(self, contract, message):
@@ -209,20 +207,24 @@ class AcceptButton(discord.ui.View):
             await interaction.response.send_message(f"⏳ You are on cooldown. Wait {remaining} more minutes.", ephemeral=True)
             return
 
+        # Lock contract
         self.locked = True
         user_cooldowns[user.id] = now
         locked_contracts[self.message.id]["accepted_by"] = user.id
 
+        # Log flight
         flight_entry = f"{self.contract['callsign']} {self.contract['route']}"
         pilot_logs.setdefault(str(user.id), []).append(flight_entry)
         save_logs()
 
+        # Update embed in channel
         embed_channel = build_contract_embed(self.contract)
         embed_channel.color = discord.Color.green()
         embed_channel.add_field(name="Accepted by", value=user.mention, inline=False)
         embed_channel.set_footer(text="Contract is taken!")
         await self.message.edit(embed=embed_channel, view=self)
 
+        # DM user
         embed_dm = build_contract_embed(self.contract)
         embed_dm.color = discord.Color.green()
         embed_dm.add_field(name="Simbrief", value="https://dispatch.simbrief.com/options/new", inline=False)
@@ -235,7 +237,8 @@ class AcceptButton(discord.ui.View):
 
         await interaction.response.send_message("✅ You have accepted this contract!", ephemeral=True)
 
-# ----- Send Contract -----
+
+# ----- Send Contract to Channel -----
 async def send_contract_to_channel(channel, contract):
     contract["assigned_aircraft"] = assign_aircraft(contract)
     guild = channel.guild
@@ -253,7 +256,7 @@ async def send_contract_to_channel(channel, contract):
     locked_contracts[message.id] = {"contract": contract, "accepted_by": None, "message": message}
 
     async def expire_and_delete(msg_id, msg):
-        await asyncio.sleep(2400)
+        await asyncio.sleep(2400)  # 40 minutes
         if locked_contracts.get(msg_id) and locked_contracts[msg_id]["accepted_by"] is None:
             expire_embed = build_contract_embed(contract)
             expire_embed.color = discord.Color.red()
@@ -262,7 +265,7 @@ async def send_contract_to_channel(channel, contract):
                 await msg.edit(embed=expire_embed, view=None)
             except:
                 pass
-        await asyncio.sleep(1200)
+        await asyncio.sleep(1200)  # 20 more min
         try:
             await msg.delete()
             locked_contracts.pop(msg_id, None)
@@ -270,6 +273,7 @@ async def send_contract_to_channel(channel, contract):
             pass
 
     asyncio.create_task(expire_and_delete(message.id, message))
+
 
 # ----- Contract Loop -----
 @tasks.loop(seconds=1)
@@ -284,6 +288,7 @@ async def send_contract_loop():
         last_sent_contract = contract
         await send_contract_to_channel(channel, contract)
     await asyncio.sleep(random.randint(60, 600))
+
 
 # ----- Logbook Command -----
 @bot.tree.command(name="logbook", description="Show your pilot logbook", guild=discord.Object(id=GUILD_ID))
@@ -302,6 +307,7 @@ async def logbook(interaction: discord.Interaction):
     embed.set_footer(text=f"Total Flights: {len(logs)}")
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
+
 # ----- Events -----
 @bot.event
 async def on_ready():
@@ -313,15 +319,10 @@ async def on_ready():
     await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
     print("Commands synced successfully!")
 
+
 # ----- Run Bot & FastAPI Together -----
 if __name__ == "__main__":
-    async def main():
-        # Start web server in background
-        asyncio.create_task(start_webserver())
-        # Start Discord bot
-        await bot.start(TOKEN)
-
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("Shutting down...")
+    # Start FastAPI in a thread
+    threading.Thread(target=run_webserver, daemon=True).start()
+    # Start Discord bot
+    bot.run(TOKEN)
