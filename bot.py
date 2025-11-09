@@ -256,8 +256,12 @@ async def send_contract_to_channel(channel, contract):
         if role:
             role_mention = role.mention
     embed = build_contract_embed(contract)
+    
+    # Fixed: only pass 'contract', not None
     msg = await channel.send(content=role_mention, embed=embed, view=AcceptButton(contract))
+    
     locked_contracts[msg.id] = {"contract": contract, "accepted_by": None}
+
 
 # ----- Contract Loop -----
 @tasks.loop(seconds=1)
@@ -330,4 +334,5 @@ async def on_ready():
 if __name__ == "__main__":
     threading.Thread(target=run_webserver, daemon=True).start()
     bot.run(TOKEN)
+
 
