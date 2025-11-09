@@ -2,13 +2,13 @@ import os
 import random
 import asyncio
 import time
+import json
 from dotenv import load_dotenv
 
 import discord
 from discord.ext import tasks, commands
 from fastapi import FastAPI
 import uvicorn
-import threading
 
 # ----- Load environment variables -----
 load_dotenv()
@@ -41,7 +41,7 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ----- Data -----
+# ----- Main Data -----
 ROLE_NAMES = {
     "Lufthansa": "Lufthansa Pilot",
     "TAP": "TAP AirPortugal Pilot",
@@ -60,6 +60,7 @@ AIRCRAFTS = {
     "EasyJet": {"short": ["A319", "A320", "A321neo"], "long": []}
 }
 
+# ----- Contracts -----
 contracts = [
     # Lufthansa
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
@@ -116,8 +117,15 @@ contracts = [
 # ----- Variables -----
 locked_contracts = {}
 user_cooldowns = {}
-pilot_logs = {}
 last_sent_contract = None
+LOG_FILE = "pilot_logs.json"
+
+# ----- Load persistent pilot logs -----
+if os.path.exists(LOG_FILE):
+    with open(LOG_FILE, "r") as f:
+        pilot_logs = json.load(f)
+else:
+    pilot_logs = {}
 
 # ----- Helper Functions -----
 def assign_aircraft(contract):
@@ -174,6 +182,7 @@ class AcceptButton(discord.ui.View):
                 ephemeral=True
             )
             return
+
         now = time.time()
         if user.id in user_cooldowns and now - user_cooldowns[user.id] < COOLDOWN_SECONDS:
             remaining = int((COOLDOWN_SECONDS - (now - user_cooldowns[user.id])) / 60)
@@ -182,11 +191,19 @@ class AcceptButton(discord.ui.View):
                 ephemeral=True
             )
             return
+
+        # Lock contract
         self.locked = True
         user_cooldowns[user.id] = now
         locked_contracts[self.message.id]["accepted_by"] = user.id
+
+        # Log flight
         flight_entry = f"{self.contract['callsign']} {self.contract['route']}"
-        pilot_logs.setdefault(user.id, []).append(flight_entry)
+        pilot_logs.setdefault(str(user.id), []).append(flight_entry)
+
+        # Save logs persistently
+        with open(LOG_FILE, "w") as f:
+            json.dump(pilot_logs, f, indent=4)
 
         # Update channel embed
         embed_channel = build_contract_embed(self.contract)
@@ -208,7 +225,7 @@ class AcceptButton(discord.ui.View):
 
         await interaction.response.send_message("✅ You have accepted this contract!", ephemeral=True)
 
-# ----- Send Contract -----
+# ----- Send Contract Function -----
 async def send_contract_to_channel(channel, contract):
     guild = channel.guild
     role_name = ROLE_NAMES.get(contract['airline'])
@@ -224,6 +241,7 @@ async def send_contract_to_channel(channel, contract):
     await message.edit(view=view)
     locked_contracts[message.id] = {"contract": contract, "accepted_by": None, "message": message}
 
+    # Expire & delete
     async def expire_and_delete(msg_id, msg):
         await asyncio.sleep(2400)  # 40 min
         if locked_contracts.get(msg_id) and locked_contracts[msg_id]["accepted_by"] is None:
@@ -234,7 +252,7 @@ async def send_contract_to_channel(channel, contract):
                 await msg.edit(embed=expire_embed, view=None)
             except:
                 pass
-        await asyncio.sleep(1200)  # 20 more min
+        await asyncio.sleep(1200)  # 20 more min = total 1h
         try:
             await msg.delete()
             locked_contracts.pop(msg_id, None)
@@ -255,12 +273,12 @@ async def send_contract_loop():
         contract = random.choice(available_contracts)
         last_sent_contract = contract
         await send_contract_to_channel(channel, contract)
-    await asyncio.sleep(random.randint(60, 600))  # 1–10 min
+    await asyncio.sleep(random.randint(60, 600))  # 1–10 min delay
 
 # ----- Logbook Command -----
 @bot.tree.command(name="logbook", description="Show your pilot logbook", guild=discord.Object(id=GUILD_ID))
 async def logbook(interaction: discord.Interaction):
-    user_id = interaction.user.id
+    user_id = str(interaction.user.id)
     logs = pilot_logs.get(user_id, [])
     if not logs:
         await interaction.response.send_message("You have no recorded flights yet.", ephemeral=True)
@@ -280,15 +298,17 @@ async def on_ready():
     print(f"Bot is online as {bot.user}!")
     if not send_contract_loop.is_running():
         send_contract_loop.start()
+    bot.tree.clear_commands(guild=None)
+    await bot.tree.sync()
+    await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
     print("Commands synced successfully!")
 
 # ----- Run Bot & Web Server -----
-def start_webserver():
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
-
 if __name__ == "__main__":
-    threading.Thread(target=start_webserver, daemon=True).start()
-    try:
-        bot.run(TOKEN)
-    except Exception as e:
-        print("Error starting bot:", e)
+    import threading
+
+    def start_webserver():
+        uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
+    threading.Thread(target=start_webserver).start()
+    bot.run(TOKEN)
