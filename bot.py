@@ -210,6 +210,14 @@ class AcceptButton(discord.ui.View):
         user_cooldowns[user.id] = now
         locked_contracts[interaction.message.id]["accepted_by"] = user.id
 
+        # ----- ADD CONTRACT TO LOGBOOK -----
+        user_id = str(user.id)
+        entry = f"{self.contract['callsign']} - {self.contract['airline']} - {self.contract['route']} ({self.contract['duration']})"
+        if user_id not in pilot_logs:
+            pilot_logs[user_id] = []
+        pilot_logs[user_id].append(entry)
+        save_logs()
+
         # Update embed in channel
         embed_channel = build_contract_embed(self.contract)
         embed_channel.color = discord.Color.green()
@@ -244,6 +252,7 @@ class AcceptButton(discord.ui.View):
             return
 
         await interaction.response.send_message("✅ You have accepted this contract!", ephemeral=True)
+
 
 # ----- Send Contract Function -----
 async def send_contract_to_channel(channel, contract):
@@ -307,3 +316,4 @@ async def on_ready():
 if __name__ == "__main__":
     threading.Thread(target=run_webserver, daemon=True).start()
     bot.run(TOKEN)
+
