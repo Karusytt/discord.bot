@@ -19,7 +19,7 @@ GUILD_ID = int(os.getenv("GUILD_ID", 0))
 COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 2*60*60))
 
 if not TOKEN:
-    print("ERROR: DISCORD_TOKEN not found in environment variables!")
+    print("ERROR: DISCORD_TOKEN not found!")
     exit(1)
 if CHANNEL_ID == 0 or GUILD_ID == 0:
     print("ERROR: CHANNEL_ID or GUILD_ID not set!")
@@ -41,7 +41,7 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ----- Main Data -----
+# ----- Data -----
 ROLE_NAMES = {
     "Lufthansa": "Lufthansa Pilot",
     "TAP": "TAP AirPortugal Pilot",
@@ -60,9 +60,9 @@ AIRCRAFTS = {
     "EasyJet": {"short": ["A319", "A320", "A321neo"], "long": []}
 }
 
-# ----- Contracts -----
+# ----- Contracts (example subset) -----
 contracts = [
-    # Lufthansa
+   # Lufthansa
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
     {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
     {"airline": "Lufthansa", "callsign": "DLH402", "route": "Munich (EDDM) ➡️ Vienna (LOWW)", "duration": "1h10m"},
@@ -120,12 +120,25 @@ user_cooldowns = {}
 last_sent_contract = None
 LOG_FILE = "pilot_logs.json"
 
-# ----- Load persistent pilot logs -----
-if os.path.exists(LOG_FILE):
-    with open(LOG_FILE, "r") as f:
-        pilot_logs = json.load(f)
-else:
-    pilot_logs = {}
+# ----- Persistent Pilot Logs -----
+def load_logs():
+    if os.path.exists(LOG_FILE):
+        try:
+            with open(LOG_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            print("Warning: Could not read pilot_logs.json, starting fresh.")
+            return {}
+    return {}
+
+def save_logs():
+    try:
+        with open(LOG_FILE, "w") as f:
+            json.dump(pilot_logs, f, indent=4)
+    except Exception as e:
+        print(f"Error saving logs: {e}")
+
+pilot_logs = load_logs()
 
 # ----- Helper Functions -----
 def assign_aircraft(contract):
@@ -160,7 +173,7 @@ def build_contract_embed(contract):
     embed.set_footer(text="Click the button to accept! Contract expires in 40 minutes.")
     return embed
 
-# ----- Button Class -----
+# ----- Accept Button -----
 class AcceptButton(discord.ui.View):
     def __init__(self, contract, message):
         super().__init__(timeout=None)
@@ -174,6 +187,7 @@ class AcceptButton(discord.ui.View):
         if self.locked:
             await interaction.response.send_message("❌ This contract is already taken!", ephemeral=True)
             return
+
         allowed_role_name = ROLE_NAMES.get(self.contract["airline"])
         user_roles = [r.name for r in user.roles]
         if allowed_role_name not in user_roles:
@@ -200,10 +214,7 @@ class AcceptButton(discord.ui.View):
         # Log flight
         flight_entry = f"{self.contract['callsign']} {self.contract['route']}"
         pilot_logs.setdefault(str(user.id), []).append(flight_entry)
-
-        # Save logs persistently
-        with open(LOG_FILE, "w") as f:
-            json.dump(pilot_logs, f, indent=4)
+        save_logs()  # Persist immediately
 
         # Update channel embed
         embed_channel = build_contract_embed(self.contract)
@@ -225,7 +236,7 @@ class AcceptButton(discord.ui.View):
 
         await interaction.response.send_message("✅ You have accepted this contract!", ephemeral=True)
 
-# ----- Send Contract Function -----
+# ----- Send Contract -----
 async def send_contract_to_channel(channel, contract):
     guild = channel.guild
     role_name = ROLE_NAMES.get(contract['airline'])
@@ -252,7 +263,7 @@ async def send_contract_to_channel(channel, contract):
                 await msg.edit(embed=expire_embed, view=None)
             except:
                 pass
-        await asyncio.sleep(1200)  # 20 more min = total 1h
+        await asyncio.sleep(1200)  # 20 more min
         try:
             await msg.delete()
             locked_contracts.pop(msg_id, None)
@@ -273,7 +284,7 @@ async def send_contract_loop():
         contract = random.choice(available_contracts)
         last_sent_contract = contract
         await send_contract_to_channel(channel, contract)
-    await asyncio.sleep(random.randint(60, 600))  # 1–10 min delay
+    await asyncio.sleep(random.randint(60, 600))
 
 # ----- Logbook Command -----
 @bot.tree.command(name="logbook", description="Show your pilot logbook", guild=discord.Object(id=GUILD_ID))
