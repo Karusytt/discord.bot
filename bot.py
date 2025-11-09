@@ -8,6 +8,7 @@ import discord
 from discord.ext import tasks, commands
 from fastapi import FastAPI
 import uvicorn
+import threading
 
 # ----- Load environment variables -----
 load_dotenv()
@@ -40,7 +41,7 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ----- Main Data -----
+# ----- Data -----
 ROLE_NAMES = {
     "Lufthansa": "Lufthansa Pilot",
     "TAP": "TAP AirPortugal Pilot",
@@ -60,7 +61,7 @@ AIRCRAFTS = {
 }
 
 contracts = [
-    # ----- Lufthansa 15 flights -----
+    # Lufthansa
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
     {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
     {"airline": "Lufthansa", "callsign": "DLH402", "route": "Munich (EDDM) ➡️ Vienna (LOWW)", "duration": "1h10m"},
@@ -77,7 +78,7 @@ contracts = [
     {"airline": "Lufthansa", "callsign": "DLH890", "route": "Frankfurt (EDDF) ➡️ Bangkok (VTBS)", "duration": "10h45m"},
     {"airline": "Lufthansa", "callsign": "DLH1166", "route": "Munich (EDDM) ➡️ Copenhagen (EKCH)", "duration": "1h30m"},
 
-    # ----- TAP 15 flights -----
+    # TAP
     {"airline": "TAP", "callsign": "TAP109", "route": "Lisbon (LPPT) ➡️ Sao Paulo (SBGR)", "duration": "10h15m"},
     {"airline": "TAP", "callsign": "TAP222", "route": "Lisbon (LPPT) ➡️ Boston (KBOS)", "duration": "7h"},
     {"airline": "TAP", "callsign": "TAP412", "route": "Lisbon (LPPT) ➡️ Porto (LPPR)", "duration": "55m"},
@@ -94,7 +95,7 @@ contracts = [
     {"airline": "TAP", "callsign": "TAP1520", "route": "Porto (LPPR) ➡️ Frankfurt (EDDF)", "duration": "2h40m"},
     {"airline": "TAP", "callsign": "TAP562", "route": "Lisbon (LPPT) ➡️ Praia (GVNP)", "duration": "4h"},
 
-    # ----- EasyJet 15 flights -----
+    # EasyJet
     {"airline": "EasyJet", "callsign": "EZY801", "route": "London Gatwick (EGKK) ➡️ Amsterdam (EHAM)", "duration": "1h10m"},
     {"airline": "EasyJet", "callsign": "EZY215", "route": "Berlin (EDDB) ➡️ Barcelona (LEBL)", "duration": "2h35m"},
     {"airline": "EasyJet", "callsign": "EZY711", "route": "London Gatwick (EGKK) ➡️ Marrakech (GMMX)", "duration": "3h30m"},
@@ -173,7 +174,6 @@ class AcceptButton(discord.ui.View):
                 ephemeral=True
             )
             return
-
         now = time.time()
         if user.id in user_cooldowns and now - user_cooldowns[user.id] < COOLDOWN_SECONDS:
             remaining = int((COOLDOWN_SECONDS - (now - user_cooldowns[user.id])) / 60)
@@ -182,15 +182,11 @@ class AcceptButton(discord.ui.View):
                 ephemeral=True
             )
             return
-
         self.locked = True
         user_cooldowns[user.id] = now
         locked_contracts[self.message.id]["accepted_by"] = user.id
-
         flight_entry = f"{self.contract['callsign']} {self.contract['route']}"
         pilot_logs.setdefault(user.id, []).append(flight_entry)
-
-        aircraft = assign_aircraft(self.contract)
 
         # Update channel embed
         embed_channel = build_contract_embed(self.contract)
@@ -212,7 +208,7 @@ class AcceptButton(discord.ui.View):
 
         await interaction.response.send_message("✅ You have accepted this contract!", ephemeral=True)
 
-# ----- Send Contract Function -----
+# ----- Send Contract -----
 async def send_contract_to_channel(channel, contract):
     guild = channel.guild
     role_name = ROLE_NAMES.get(contract['airline'])
@@ -228,7 +224,6 @@ async def send_contract_to_channel(channel, contract):
     await message.edit(view=view)
     locked_contracts[message.id] = {"contract": contract, "accepted_by": None, "message": message}
 
-    # Expire & delete
     async def expire_and_delete(msg_id, msg):
         await asyncio.sleep(2400)  # 40 min
         if locked_contracts.get(msg_id) and locked_contracts[msg_id]["accepted_by"] is None:
@@ -239,7 +234,7 @@ async def send_contract_to_channel(channel, contract):
                 await msg.edit(embed=expire_embed, view=None)
             except:
                 pass
-        await asyncio.sleep(1200)  # 20 more min = total 1h
+        await asyncio.sleep(1200)  # 20 more min
         try:
             await msg.delete()
             locked_contracts.pop(msg_id, None)
@@ -260,7 +255,7 @@ async def send_contract_loop():
         contract = random.choice(available_contracts)
         last_sent_contract = contract
         await send_contract_to_channel(channel, contract)
-    await asyncio.sleep(random.randint(60, 600))  # 1–10 min delay
+    await asyncio.sleep(random.randint(60, 600))  # 1–10 min
 
 # ----- Logbook Command -----
 @bot.tree.command(name="logbook", description="Show your pilot logbook", guild=discord.Object(id=GUILD_ID))
@@ -285,17 +280,15 @@ async def on_ready():
     print(f"Bot is online as {bot.user}!")
     if not send_contract_loop.is_running():
         send_contract_loop.start()
-    bot.tree.clear_commands(guild=None)
-    await bot.tree.sync()
-    await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
     print("Commands synced successfully!")
 
 # ----- Run Bot & Web Server -----
+def start_webserver():
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
 if __name__ == "__main__":
-    import threading
-
-    def start_webserver():
-        uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
-
-    threading.Thread(target=start_webserver).start()
-    bot.run(TOKEN)
+    threading.Thread(target=start_webserver, daemon=True).start()
+    try:
+        bot.run(TOKEN)
+    except Exception as e:
+        print("Error starting bot:", e)
