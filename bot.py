@@ -224,11 +224,27 @@ class AcceptButton(discord.ui.View):
         embed_channel.set_footer(text="Contract is taken!")
         await self.message.edit(embed=embed_channel, view=self)
 
-        # DM user
-        embed_dm = build_contract_embed(self.contract)
-        embed_dm.color = discord.Color.green()
-        embed_dm.add_field(name="Simbrief", value="https://dispatch.simbrief.com/options/new", inline=False)
+        # DM user with full contract info
+        aircraft = self.contract.get("assigned_aircraft") or assign_aircraft(self.contract)
+        embed_dm = discord.Embed(
+            title=f"✈️ Contract Accepted: {self.contract['callsign']}",
+            color=discord.Color.green()
+        )
+        embed_dm.add_field(name="🏢 Airline", value=self.contract["airline"], inline=False)
+        embed_dm.add_field(name="🔢 Callsign", value=self.contract["callsign"], inline=True)
+        embed_dm.add_field(name="🗺️ Route", value=self.contract["route"], inline=False)
+        embed_dm.add_field(name="⏱️ Duration", value=self.contract["duration"], inline=True)
+        embed_dm.add_field(name="🛫 Aircraft", value=aircraft, inline=True)
+        embed_dm.add_field(
+            name="📋 SimBrief",
+            value=(
+                "Create a flight plan here: [SimBrief Dispatch](https://dispatch.simbrief.com/options/new)\n"
+                "If you don't have a SimBrief account, create one to use the link!"
+            ),
+            inline=False
+        )
         embed_dm.set_footer(text="Use SimBrief to create your flight plan!")
+
         try:
             await user.send(embed=embed_dm)
         except:
@@ -236,56 +252,6 @@ class AcceptButton(discord.ui.View):
             return
 
         await interaction.response.send_message("✅ You have accepted this contract!", ephemeral=True)
-
-# ----- Send Contract to Channel -----
-async def send_contract_to_channel(channel, contract):
-    contract["assigned_aircraft"] = assign_aircraft(contract)
-    guild = channel.guild
-    role_name = ROLE_NAMES.get(contract['airline'])
-    role_mention = ""
-    if role_name:
-        role = discord.utils.get(guild.roles, name=role_name)
-        if role:
-            role_mention = role.mention
-
-    embed = build_contract_embed(contract)
-    message = await channel.send(content=role_mention, embed=embed)
-    view = AcceptButton(contract, message)
-    await message.edit(view=view)
-    locked_contracts[message.id] = {"contract": contract, "accepted_by": None, "message": message}
-
-    async def expire_and_delete(msg_id, msg):
-        await asyncio.sleep(2400)  # 40 minutes
-        if locked_contracts.get(msg_id) and locked_contracts[msg_id]["accepted_by"] is None:
-            expire_embed = build_contract_embed(contract)
-            expire_embed.color = discord.Color.red()
-            expire_embed.set_footer(text="❌ This contract was not accepted in time.")
-            try:
-                await msg.edit(embed=expire_embed, view=None)
-            except:
-                pass
-        await asyncio.sleep(1200)  # 20 more min
-        try:
-            await msg.delete()
-            locked_contracts.pop(msg_id, None)
-        except:
-            pass
-
-    asyncio.create_task(expire_and_delete(message.id, message))
-
-# ----- Contract Loop -----
-@tasks.loop(seconds=1)
-async def send_contract_loop():
-    global last_sent_contract
-    channel = bot.get_channel(CHANNEL_ID)
-    if channel:
-        available_contracts = [c for c in contracts if c != last_sent_contract]
-        if not available_contracts:
-            available_contracts = contracts
-        contract = random.choice(available_contracts)
-        last_sent_contract = contract
-        await send_contract_to_channel(channel, contract)
-    await asyncio.sleep(random.randint(60, 300))  # 1-5 minutes
 
 # ----- Logbook Command -----
 @bot.tree.command(name="logbook", description="Show your pilot logbook", guild=discord.Object(id=GUILD_ID))
@@ -319,3 +285,4 @@ async def on_ready():
 if __name__ == "__main__":
     threading.Thread(target=run_webserver, daemon=True).start()
     bot.run(TOKEN)
+
