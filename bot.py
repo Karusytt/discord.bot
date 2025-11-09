@@ -9,7 +9,6 @@ import discord
 from discord.ext import tasks, commands
 from fastapi import FastAPI
 import uvicorn
-import threading
 
 # ----- Load environment variables -----
 load_dotenv()
@@ -33,8 +32,11 @@ app = FastAPI()
 def read_root():
     return {"status": "Bot is running!"}
 
-def start_webserver():
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+async def start_webserver():
+    """Start FastAPI web server asynchronously."""
+    config = uvicorn.Config(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)), log_level="info")
+    server = uvicorn.Server(config)
+    await server.serve()
 
 # ----- Discord Bot Setup -----
 intents = discord.Intents.default()
@@ -123,12 +125,11 @@ locked_contracts = {}
 user_cooldowns = {}
 last_sent_contract = None
 
-# Persist logs in a folder that survives container restarts
-LOGS_DIR = "data"  # <- folder to store persistent data
+# Persist logs
+LOGS_DIR = "data"
 os.makedirs(LOGS_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOGS_DIR, "pilot_logs.json")
 
-# ----- Persistent Pilot Logs -----
 def load_logs():
     if os.path.exists(LOG_FILE):
         try:
@@ -168,12 +169,8 @@ def assign_aircraft(contract):
 def build_contract_embed(contract):
     airline = contract["airline"]
     color = AIRLINE_COLORS.get(airline, discord.Color.blue())
-    # Use assigned aircraft if available
     aircraft = contract.get("assigned_aircraft") or assign_aircraft(contract)
-    embed = discord.Embed(
-        title="✈️ New Contract Available!",
-        color=color
-    )
+    embed = discord.Embed(title="✈️ New Contract Available!", color=color)
     embed.add_field(name="🏢 Airline", value=airline, inline=True)
     embed.add_field(name="🆔 Callsign", value=f"`{contract['callsign']}`", inline=True)
     embed.add_field(name="🗺️ Route", value=contract['route'], inline=False)
@@ -201,7 +198,7 @@ class AcceptButton(discord.ui.View):
         user_roles = [r.name for r in user.roles]
         if allowed_role_name not in user_roles:
             await interaction.response.send_message(
-                f"❌ You are not an {self.contract['airline']} pilot! You can only accept contracts for your airline.",
+                f"❌ You are not an {self.contract['airline']} pilot!",
                 ephemeral=True
             )
             return
@@ -209,34 +206,27 @@ class AcceptButton(discord.ui.View):
         now = time.time()
         if user.id in user_cooldowns and now - user_cooldowns[user.id] < COOLDOWN_SECONDS:
             remaining = int((COOLDOWN_SECONDS - (now - user_cooldowns[user.id])) / 60)
-            await interaction.response.send_message(
-                f"⏳ You are on cooldown. Wait {remaining} more minutes.",
-                ephemeral=True
-            )
+            await interaction.response.send_message(f"⏳ You are on cooldown. Wait {remaining} more minutes.", ephemeral=True)
             return
 
-        # Lock contract
         self.locked = True
         user_cooldowns[user.id] = now
         locked_contracts[self.message.id]["accepted_by"] = user.id
 
-        # Log flight
         flight_entry = f"{self.contract['callsign']} {self.contract['route']}"
         pilot_logs.setdefault(str(user.id), []).append(flight_entry)
-        save_logs()  # Persist immediately
+        save_logs()
 
-        # Update channel embed
         embed_channel = build_contract_embed(self.contract)
         embed_channel.color = discord.Color.green()
         embed_channel.add_field(name="Accepted by", value=user.mention, inline=False)
         embed_channel.set_footer(text="Contract is taken!")
         await self.message.edit(embed=embed_channel, view=self)
 
-        # DM user
         embed_dm = build_contract_embed(self.contract)
         embed_dm.color = discord.Color.green()
-        embed_dm.add_field(name="Simbrief", value="Create a flight plan here: https://dispatch.simbrief.com/options/new", inline=False)
-        embed_dm.set_footer(text="If you don't have a SimBrief account, create one to use the link!")
+        embed_dm.add_field(name="Simbrief", value="https://dispatch.simbrief.com/options/new", inline=False)
+        embed_dm.set_footer(text="Use SimBrief to create your flight plan!")
         try:
             await user.send(embed=embed_dm)
         except:
@@ -247,9 +237,7 @@ class AcceptButton(discord.ui.View):
 
 # ----- Send Contract -----
 async def send_contract_to_channel(channel, contract):
-    # Assign aircraft once
     contract["assigned_aircraft"] = assign_aircraft(contract)
-
     guild = channel.guild
     role_name = ROLE_NAMES.get(contract['airline'])
     role_mention = ""
@@ -264,9 +252,8 @@ async def send_contract_to_channel(channel, contract):
     await message.edit(view=view)
     locked_contracts[message.id] = {"contract": contract, "accepted_by": None, "message": message}
 
-    # Expire & delete
     async def expire_and_delete(msg_id, msg):
-        await asyncio.sleep(2400)  # 40 min
+        await asyncio.sleep(2400)
         if locked_contracts.get(msg_id) and locked_contracts[msg_id]["accepted_by"] is None:
             expire_embed = build_contract_embed(contract)
             expire_embed.color = discord.Color.red()
@@ -275,7 +262,7 @@ async def send_contract_to_channel(channel, contract):
                 await msg.edit(embed=expire_embed, view=None)
             except:
                 pass
-        await asyncio.sleep(1200)  # 20 more min
+        await asyncio.sleep(1200)
         try:
             await msg.delete()
             locked_contracts.pop(msg_id, None)
@@ -326,7 +313,15 @@ async def on_ready():
     await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
     print("Commands synced successfully!")
 
-# ----- Run Bot & Web Server -----
+# ----- Run Bot & FastAPI Together -----
 if __name__ == "__main__":
-    threading.Thread(target=start_webserver, daemon=True).start()
-    bot.run(TOKEN)
+    async def main():
+        # Start web server in background
+        asyncio.create_task(start_webserver())
+        # Start Discord bot
+        await bot.start(TOKEN)
+
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Shutting down...")
