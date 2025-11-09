@@ -122,7 +122,11 @@ contracts = [
 locked_contracts = {}
 user_cooldowns = {}
 last_sent_contract = None
-LOG_FILE = "pilot_logs.json"
+
+# Persist logs in a folder that survives container restarts
+LOGS_DIR = "data"  # <- folder to store persistent data
+os.makedirs(LOGS_DIR, exist_ok=True)
+LOG_FILE = os.path.join(LOGS_DIR, "pilot_logs.json")
 
 # ----- Persistent Pilot Logs -----
 def load_logs():
@@ -164,7 +168,8 @@ def assign_aircraft(contract):
 def build_contract_embed(contract):
     airline = contract["airline"]
     color = AIRLINE_COLORS.get(airline, discord.Color.blue())
-    aircraft = assign_aircraft(contract)
+    # Use assigned aircraft if available
+    aircraft = contract.get("assigned_aircraft") or assign_aircraft(contract)
     embed = discord.Embed(
         title="✈️ New Contract Available!",
         color=color
@@ -242,6 +247,9 @@ class AcceptButton(discord.ui.View):
 
 # ----- Send Contract -----
 async def send_contract_to_channel(channel, contract):
+    # Assign aircraft once
+    contract["assigned_aircraft"] = assign_aircraft(contract)
+
     guild = channel.guild
     role_name = ROLE_NAMES.get(contract['airline'])
     role_mention = ""
