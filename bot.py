@@ -66,7 +66,7 @@ AIRCRAFTS = {
 
 # ----- Contracts -----
 contracts = [
-    # Lufthansa
+       # Lufthansa
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
     {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
     {"airline": "Lufthansa", "callsign": "DLH402", "route": "Munich (EDDM) ➡️ Vienna (LOWW)", "duration": "1h10m"},
@@ -256,12 +256,8 @@ async def send_contract_to_channel(channel, contract):
         if role:
             role_mention = role.mention
     embed = build_contract_embed(contract)
-    
-    # Fixed: only pass 'contract', not None
     msg = await channel.send(content=role_mention, embed=embed, view=AcceptButton(contract))
-    
     locked_contracts[msg.id] = {"contract": contract, "accepted_by": None}
-
 
 # ----- Contract Loop -----
 @tasks.loop(seconds=1)
@@ -276,21 +272,6 @@ async def send_contract_loop():
         last_sent_contract = contract
         await send_contract_to_channel(channel, contract)
     await asyncio.sleep(random.randint(60, 300))
-
-# ----- Send Contract Function -----
-async def send_contract_to_channel(channel, contract):
-    contract["assigned_aircraft"] = assign_aircraft(contract)
-    guild = channel.guild
-    role_name = ROLE_NAMES.get(contract['airline'])
-    role_mention = ""
-    if role_name:
-        role = discord.utils.get(guild.roles, name=role_name)
-        if role:
-            role_mention = role.mention
-    embed = build_contract_embed(contract)
-    msg = await channel.send(content=role_mention, embed=embed, view=AcceptButton(contract, None))
-    locked_contracts[msg.id] = {"contract": contract, "accepted_by": None}
-    msg.view.message = msg  # link view to message
 
 # ----- Logbook Command -----
 @bot.tree.command(name="logbook", description="Show your pilot logbook", guild=discord.Object(id=GUILD_ID))
@@ -314,16 +295,8 @@ async def logbook(interaction: discord.Interaction):
 async def on_ready():
     print(f"Bot is online as {bot.user}!")
 
-    # Start the contract loop
     if not send_contract_loop.is_running():
         send_contract_loop.start()
-
-    # Re-register persistent views for buttons
-    for msg_id, info in locked_contracts.items():
-        try:
-            bot.add_view(AcceptButton(info["contract"], None))
-        except Exception:
-            pass
 
     bot.tree.clear_commands(guild=None)
     await bot.tree.sync()
@@ -334,5 +307,3 @@ async def on_ready():
 if __name__ == "__main__":
     threading.Thread(target=run_webserver, daemon=True).start()
     bot.run(TOKEN)
-
-
