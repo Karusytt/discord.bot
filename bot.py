@@ -10,7 +10,7 @@ from fastapi import FastAPI
 import uvicorn
 
 # ----- Load environment variables -----
-load_dotenv()  # Only needed for local testing
+load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", 0))
@@ -25,7 +25,7 @@ if CHANNEL_ID == 0 or GUILD_ID == 0:
     print("ERROR: CHANNEL_ID or GUILD_ID not set!")
     exit(1)
 
-# ----- FastAPI server for uptime monitoring -----
+# ----- FastAPI server -----
 app = FastAPI()
 
 @app.get("/")
@@ -49,12 +49,13 @@ ROLE_NAMES = {
 }
 
 AIRCRAFTS = {
-    "Lufthansa": {"short": ["A320","A321","B737"], "long": ["A330","B747","B777"]},
-    "TAP": {"short": ["A319","A320"], "long": ["A330","A321LR"]},
-    "EasyJet": {"short": ["A319","A320","A321"], "long": []}
+    "Lufthansa": {"short": ["A319", "A320", "A321"], "long": ["A330", "A340", "A350", "B747", "B787"]},
+    "TAP": {"short": ["A319", "A320"], "long": ["A330", "A321LR"]},
+    "EasyJet": {"short": ["A319", "A320", "A321neo"], "long": []}
 }
 
 contracts = [
+    # ----- Lufthansa 15 flights -----
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
     {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
     {"airline": "Lufthansa", "callsign": "DLH402", "route": "Munich (EDDM) ➡️ Vienna (LOWW)", "duration": "1h10m"},
@@ -70,6 +71,8 @@ contracts = [
     {"airline": "Lufthansa", "callsign": "DLH332", "route": "Munich (EDDM) ➡️ Miami (KMIA)", "duration": "10h30m"},
     {"airline": "Lufthansa", "callsign": "DLH890", "route": "Frankfurt (EDDF) ➡️ Bangkok (VTBS)", "duration": "10h45m"},
     {"airline": "Lufthansa", "callsign": "DLH1166", "route": "Munich (EDDM) ➡️ Copenhagen (EKCH)", "duration": "1h30m"},
+
+    # ----- TAP 15 flights -----
     {"airline": "TAP", "callsign": "TAP109", "route": "Lisbon (LPPT) ➡️ Sao Paulo (SBGR)", "duration": "10h15m"},
     {"airline": "TAP", "callsign": "TAP222", "route": "Lisbon (LPPT) ➡️ Boston (KBOS)", "duration": "7h"},
     {"airline": "TAP", "callsign": "TAP412", "route": "Lisbon (LPPT) ➡️ Porto (LPPR)", "duration": "55m"},
@@ -85,11 +88,23 @@ contracts = [
     {"airline": "TAP", "callsign": "TAP259", "route": "Lisbon (LPPT) ➡️ Toronto (CYYZ)", "duration": "7h45m"},
     {"airline": "TAP", "callsign": "TAP1520", "route": "Porto (LPPR) ➡️ Frankfurt (EDDF)", "duration": "2h40m"},
     {"airline": "TAP", "callsign": "TAP562", "route": "Lisbon (LPPT) ➡️ Praia (GVNP)", "duration": "4h"},
+
+    # ----- EasyJet 15 flights -----
+    {"airline": "EasyJet", "callsign": "EZY801", "route": "London Gatwick (EGKK) ➡️ Amsterdam (EHAM)", "duration": "1h10m"},
+    {"airline": "EasyJet", "callsign": "EZY215", "route": "Berlin (EDDB) ➡️ Barcelona (LEBL)", "duration": "2h35m"},
     {"airline": "EasyJet", "callsign": "EZY711", "route": "London Gatwick (EGKK) ➡️ Marrakech (GMMX)", "duration": "3h30m"},
     {"airline": "EasyJet", "callsign": "EZY115", "route": "Amsterdam (EHAM) ➡️ Lisbon (LPPT)", "duration": "2h50m"},
-    {"airline": "EasyJet", "callsign": "EZY215", "route": "Berlin (EDDB) ➡️ Barcelona (LEBL)", "duration": "2h35m"},
+    {"airline": "EasyJet", "callsign": "EZY503", "route": "Manchester (EGCC) ➡️ Geneva (LSGG)", "duration": "1h55m"},
+    {"airline": "EasyJet", "callsign": "EZY402", "route": "Bristol (EGGD) ➡️ Rome (LIRF)", "duration": "2h45m"},
+    {"airline": "EasyJet", "callsign": "EZY821", "route": "London Luton (EGGW) ➡️ Budapest (LHBP)", "duration": "2h30m"},
+    {"airline": "EasyJet", "callsign": "EZY332", "route": "Paris Orly (LFPO) ➡️ Nice (LFMN)", "duration": "1h25m"},
+    {"airline": "EasyJet", "callsign": "EZY925", "route": "London Gatwick (EGKK) ➡️ Berlin (EDDB)", "duration": "1h55m"},
+    {"airline": "EasyJet", "callsign": "EZY2105", "route": "Milan Malpensa (LIMC) ➡️ Naples (LIRN)", "duration": "1h25m"},
+    {"airline": "EasyJet", "callsign": "EZY704", "route": "Edinburgh (EGPH) ➡️ Geneva (LSGG)", "duration": "2h5m"},
     {"airline": "EasyJet", "callsign": "EZY8403", "route": "London Luton (EGGW) ➡️ Amsterdam (EHAM)", "duration": "1h15m"},
-    # ... Add all the rest of your contracts here
+    {"airline": "EasyJet", "callsign": "EZY607", "route": "Lisbon (LPPT) ➡️ Basel (LFSB)", "duration": "2h30m"},
+    {"airline": "EasyJet", "callsign": "EZY908", "route": "Belfast (EGAA) ➡️ Faro (LPFR)", "duration": "3h10m"},
+    {"airline": "EasyJet", "callsign": "EZY452", "route": "London Gatwick (EGKK) ➡️ Zurich (LSZH)", "duration": "1h40m"},
 ]
 
 # ----- Variables -----
@@ -114,7 +129,9 @@ def assign_aircraft(contract):
         return random.choice(AIRCRAFTS[airline]["short"])
     else:
         return random.choice(AIRCRAFTS[airline]["long"]) if AIRCRAFTS[airline]["long"] else random.choice(AIRCRAFTS[airline]["short"])
+        
 
+# ----- Send Contract Function -----
 async def send_contract_to_channel(channel, contract):
     guild = channel.guild
     role_name = ROLE_NAMES.get(contract['airline'])
