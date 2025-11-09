@@ -12,22 +12,17 @@ import uvicorn
 
 # ----- Load environment variables -----
 load_dotenv()
-
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", 0))
 GUILD_ID = int(os.getenv("GUILD_ID", 0))
 COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 2*60*60))
 
-if not TOKEN:
-    print("ERROR: DISCORD_TOKEN not found!")
-    exit(1)
-if CHANNEL_ID == 0 or GUILD_ID == 0:
-    print("ERROR: CHANNEL_ID or GUILD_ID not set!")
+if not TOKEN or CHANNEL_ID == 0 or GUILD_ID == 0:
+    print("ERROR: Missing environment variables!")
     exit(1)
 
 # ----- FastAPI server -----
 app = FastAPI()
-
 @app.get("/")
 def read_root():
     return {"status": "Bot is running!"}
@@ -38,7 +33,6 @@ intents.messages = True
 intents.message_content = True
 intents.guilds = True
 intents.members = True
-
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # ----- Data -----
@@ -60,9 +54,9 @@ AIRCRAFTS = {
     "EasyJet": {"short": ["A319", "A320", "A321neo"], "long": []}
 }
 
-# ----- Contracts (example subset) -----
+# ----- Full Contracts -----
 contracts = [
-   # Lufthansa
+    # Lufthansa
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
     {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
     {"airline": "Lufthansa", "callsign": "DLH402", "route": "Munich (EDDM) ➡️ Vienna (LOWW)", "duration": "1h10m"},
@@ -126,9 +120,8 @@ def load_logs():
         try:
             with open(LOG_FILE, "r") as f:
                 return json.load(f)
-        except Exception:
+        except:
             print("Warning: Could not read pilot_logs.json, starting fresh.")
-            return {}
     return {}
 
 def save_logs():
@@ -214,7 +207,7 @@ class AcceptButton(discord.ui.View):
         # Log flight
         flight_entry = f"{self.contract['callsign']} {self.contract['route']}"
         pilot_logs.setdefault(str(user.id), []).append(flight_entry)
-        save_logs()  # Persist immediately
+        save_logs()
 
         # Update channel embed
         embed_channel = build_contract_embed(self.contract)
@@ -236,7 +229,7 @@ class AcceptButton(discord.ui.View):
 
         await interaction.response.send_message("✅ You have accepted this contract!", ephemeral=True)
 
-# ----- Send Contract -----
+# ----- Send Contract Function -----
 async def send_contract_to_channel(channel, contract):
     guild = channel.guild
     role_name = ROLE_NAMES.get(contract['airline'])
@@ -252,9 +245,8 @@ async def send_contract_to_channel(channel, contract):
     await message.edit(view=view)
     locked_contracts[message.id] = {"contract": contract, "accepted_by": None, "message": message}
 
-    # Expire & delete
     async def expire_and_delete(msg_id, msg):
-        await asyncio.sleep(2400)  # 40 min
+        await asyncio.sleep(2400)
         if locked_contracts.get(msg_id) and locked_contracts[msg_id]["accepted_by"] is None:
             expire_embed = build_contract_embed(contract)
             expire_embed.color = discord.Color.red()
@@ -263,7 +255,7 @@ async def send_contract_to_channel(channel, contract):
                 await msg.edit(embed=expire_embed, view=None)
             except:
                 pass
-        await asyncio.sleep(1200)  # 20 more min
+        await asyncio.sleep(1200)
         try:
             await msg.delete()
             locked_contracts.pop(msg_id, None)
@@ -314,12 +306,12 @@ async def on_ready():
     await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
     print("Commands synced successfully!")
 
-# ----- Run Bot & Web Server -----
+# ----- Run Bot & FastAPI -----
+async def main():
+    config = uvicorn.Config(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)), log_level="info")
+    server = uvicorn.Server(config)
+    asyncio.create_task(server.serve())
+    await bot.start(TOKEN)
+
 if __name__ == "__main__":
-    import threading
-
-    def start_webserver():
-        uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
-
-    threading.Thread(target=start_webserver).start()
-    bot.run(TOKEN)
+    asyncio.run(main())
