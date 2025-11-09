@@ -176,7 +176,7 @@ def build_contract_embed(contract):
     embed.add_field(name="🛫 Aircraft", value=aircraft, inline=True)
     embed.set_footer(text="Click the button to accept! Contract expires in 40 minutes.")
     return embed
-    
+
 # ----- Accept Button -----
 class AcceptButton(discord.ui.View):
     def __init__(self, contract, message):
@@ -237,7 +237,6 @@ class AcceptButton(discord.ui.View):
 
         await interaction.response.send_message("✅ You have accepted this contract!", ephemeral=True)
 
-
 # ----- Send Contract to Channel -----
 async def send_contract_to_channel(channel, contract):
     contract["assigned_aircraft"] = assign_aircraft(contract)
@@ -274,7 +273,6 @@ async def send_contract_to_channel(channel, contract):
 
     asyncio.create_task(expire_and_delete(message.id, message))
 
-
 # ----- Contract Loop -----
 @tasks.loop(seconds=1)
 async def send_contract_loop():
@@ -287,8 +285,7 @@ async def send_contract_loop():
         contract = random.choice(available_contracts)
         last_sent_contract = contract
         await send_contract_to_channel(channel, contract)
-    await asyncio.sleep(random.randint(60, 600))
-
+    await asyncio.sleep(random.randint(60, 300))  # 1-5 minutes
 
 # ----- Logbook Command -----
 @bot.tree.command(name="logbook", description="Show your pilot logbook", guild=discord.Object(id=GUILD_ID))
@@ -307,7 +304,6 @@ async def logbook(interaction: discord.Interaction):
     embed.set_footer(text=f"Total Flights: {len(logs)}")
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-
 # ----- Events -----
 @bot.event
 async def on_ready():
@@ -319,10 +315,7 @@ async def on_ready():
     await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
     print("Commands synced successfully!")
 
-
 # ----- Run Bot & FastAPI Together -----
 if __name__ == "__main__":
-    # Start FastAPI in a thread
     threading.Thread(target=run_webserver, daemon=True).start()
-    # Start Discord bot
     bot.run(TOKEN)
