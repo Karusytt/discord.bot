@@ -179,11 +179,10 @@ def build_contract_embed(contract):
 
 # ----- Accept Button -----
 class AcceptButton(discord.ui.View):
-    def __init__(self, contract, message):
+    def __init__(self, contract):
         super().__init__(timeout=None)
         self.contract = contract
         self.locked = False
-        self.message = message
 
     @discord.ui.button(label="Accept Contract ✅", style=discord.ButtonStyle.green)
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -209,19 +208,14 @@ class AcceptButton(discord.ui.View):
         # Lock contract
         self.locked = True
         user_cooldowns[user.id] = now
-        locked_contracts[self.message.id]["accepted_by"] = user.id
+        locked_contracts[interaction.message.id]["accepted_by"] = user.id
 
-        # Log flight
-        flight_entry = f"{self.contract['callsign']} {self.contract['route']}"
-        pilot_logs.setdefault(str(user.id), []).append(flight_entry)
-        save_logs()
-
-        # Update channel embed
+        # Update embed in channel
         embed_channel = build_contract_embed(self.contract)
         embed_channel.color = discord.Color.green()
         embed_channel.add_field(name="Accepted by", value=user.mention, inline=False)
         embed_channel.set_footer(text="Contract is taken!")
-        await self.message.edit(embed=embed_channel, view=self)
+        await interaction.message.edit(embed=embed_channel, view=self)
 
         # DM user
         aircraft = self.contract.get("assigned_aircraft") or assign_aircraft(self.contract)
@@ -250,6 +244,20 @@ class AcceptButton(discord.ui.View):
             return
 
         await interaction.response.send_message("✅ You have accepted this contract!", ephemeral=True)
+
+# ----- Send Contract Function -----
+async def send_contract_to_channel(channel, contract):
+    contract["assigned_aircraft"] = assign_aircraft(contract)
+    guild = channel.guild
+    role_name = ROLE_NAMES.get(contract['airline'])
+    role_mention = ""
+    if role_name:
+        role = discord.utils.get(guild.roles, name=role_name)
+        if role:
+            role_mention = role.mention
+    embed = build_contract_embed(contract)
+    msg = await channel.send(content=role_mention, embed=embed, view=AcceptButton(contract))
+    locked_contracts[msg.id] = {"contract": contract, "accepted_by": None}
 
 # ----- Contract Loop -----
 @tasks.loop(seconds=1)
@@ -322,3 +330,4 @@ async def on_ready():
 if __name__ == "__main__":
     threading.Thread(target=run_webserver, daemon=True).start()
     bot.run(TOKEN)
+
