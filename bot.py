@@ -196,8 +196,7 @@ class AcceptButton(discord.ui.View):
         user_roles = [r.name for r in user.roles]
         if allowed_role_name not in user_roles:
             await interaction.response.send_message(
-                f"❌ You are not an {self.contract['airline']} pilot!",
-                ephemeral=True
+                f"❌ You are not an {self.contract['airline']} pilot!", ephemeral=True
             )
             return
 
@@ -217,14 +216,14 @@ class AcceptButton(discord.ui.View):
         pilot_logs.setdefault(str(user.id), []).append(flight_entry)
         save_logs()
 
-        # Update embed in channel
+        # Update channel embed
         embed_channel = build_contract_embed(self.contract)
         embed_channel.color = discord.Color.green()
         embed_channel.add_field(name="Accepted by", value=user.mention, inline=False)
         embed_channel.set_footer(text="Contract is taken!")
         await self.message.edit(embed=embed_channel, view=self)
 
-        # DM user with full contract info
+        # DM user
         aircraft = self.contract.get("assigned_aircraft") or assign_aircraft(self.contract)
         embed_dm = discord.Embed(
             title=f"✈️ Contract Accepted: {self.contract['callsign']}",
@@ -244,7 +243,6 @@ class AcceptButton(discord.ui.View):
             inline=False
         )
         embed_dm.set_footer(text="Use SimBrief to create your flight plan!")
-
         try:
             await user.send(embed=embed_dm)
         except:
@@ -252,6 +250,35 @@ class AcceptButton(discord.ui.View):
             return
 
         await interaction.response.send_message("✅ You have accepted this contract!", ephemeral=True)
+
+# ----- Contract Loop -----
+@tasks.loop(seconds=1)
+async def send_contract_loop():
+    global last_sent_contract
+    channel = bot.get_channel(CHANNEL_ID)
+    if channel:
+        available_contracts = [c for c in contracts if c != last_sent_contract]
+        if not available_contracts:
+            available_contracts = contracts
+        contract = random.choice(available_contracts)
+        last_sent_contract = contract
+        await send_contract_to_channel(channel, contract)
+    await asyncio.sleep(random.randint(60, 300))
+
+# ----- Send Contract Function -----
+async def send_contract_to_channel(channel, contract):
+    contract["assigned_aircraft"] = assign_aircraft(contract)
+    guild = channel.guild
+    role_name = ROLE_NAMES.get(contract['airline'])
+    role_mention = ""
+    if role_name:
+        role = discord.utils.get(guild.roles, name=role_name)
+        if role:
+            role_mention = role.mention
+    embed = build_contract_embed(contract)
+    msg = await channel.send(content=role_mention, embed=embed, view=AcceptButton(contract, None))
+    locked_contracts[msg.id] = {"contract": contract, "accepted_by": None}
+    msg.view.message = msg  # link view to message
 
 # ----- Logbook Command -----
 @bot.tree.command(name="logbook", description="Show your pilot logbook", guild=discord.Object(id=GUILD_ID))
@@ -274,8 +301,18 @@ async def logbook(interaction: discord.Interaction):
 @bot.event
 async def on_ready():
     print(f"Bot is online as {bot.user}!")
+
+    # Start the contract loop
     if not send_contract_loop.is_running():
         send_contract_loop.start()
+
+    # Re-register persistent views for buttons
+    for msg_id, info in locked_contracts.items():
+        try:
+            bot.add_view(AcceptButton(info["contract"], None))
+        except Exception:
+            pass
+
     bot.tree.clear_commands(guild=None)
     await bot.tree.sync()
     await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
@@ -285,4 +322,3 @@ async def on_ready():
 if __name__ == "__main__":
     threading.Thread(target=run_webserver, daemon=True).start()
     bot.run(TOKEN)
-
