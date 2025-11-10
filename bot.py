@@ -64,9 +64,19 @@ AIRCRAFTS = {
     "Ryanair": {"short": ["B737-800", "B737 MAX 8-200"], "long": []}
 }
 
+# Phonetic letters for callsign suffixes
+PHONETIC_LETTERS = list("ABCDEFGHJKLMNPQRSTUVWXYZ")  # exclude I/O
+
+def maybe_add_phonetic_suffix(callsign):
+    """Randomly add 1-2 phonetic letters to a callsign."""
+    if random.random() < 0.3:  # 30% chance
+        letters = "".join(random.choices(PHONETIC_LETTERS, k=random.choice([1,2])))
+        return callsign + letters
+    return callsign
+
 # ----- Contracts -----
 contracts = [
-       # Lufthansa
+ # Lufthansa
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
     {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
     {"airline": "Lufthansa", "callsign": "DLH402", "route": "Munich (EDDM) ➡️ Vienna (LOWW)", "duration": "1h10m"},
@@ -118,22 +128,21 @@ contracts = [
     {"airline": "EasyJet", "callsign": "EZY452", "route": "London Gatwick (EGKK) ➡️ Zurich (LSZH)", "duration": "1h40m"},
 
     # Ryanair
-{"airline": "Ryanair", "callsign": "RYR1234", "route": "Dublin (EIDW) ➡️ London Stansted (EGSS)", "duration": "1h15m"},
-{"airline": "Ryanair", "callsign": "RYR2456", "route": "London Stansted (EGSS) ➡️ Barcelona (LEBL)", "duration": "2h10m"},
-{"airline": "Ryanair", "callsign": "RYR3310", "route": "Dublin (EIDW) ➡️ Amsterdam (EHAM)", "duration": "1h55m"},
-{"airline": "Ryanair", "callsign": "RYR4112", "route": "Manchester (EGCC) ➡️ Madrid (LEMD)", "duration": "2h30m"},
-{"airline": "Ryanair", "callsign": "RYR4758", "route": "Dublin (EIDW) ➡️ Milan Bergamo (LIME)", "duration": "2h10m"},
-{"airline": "Ryanair", "callsign": "RYR5230", "route": "Berlin Brandenburg (EDDB) ➡️ Rome Fiumicino (LIRF)", "duration": "2h05m"},
-{"airline": "Ryanair", "callsign": "RYR6104", "route": "Lisbon (LPPT) ➡️ Brussels Charleroi (EBCI)", "duration": "2h50m"},
-{"airline": "Ryanair", "callsign": "RYR7452", "route": "Vienna (LOWW) ➡️ Athens (LGAV)", "duration": "2h15m"},
-{"airline": "Ryanair", "callsign": "RYR8316", "route": "Madrid (LEMD) ➡️ Dublin (EIDW)", "duration": "2h20m"},
-{"airline": "Ryanair", "callsign": "RYR9022", "route": "Stockholm Arlanda (ESSA) ➡️ Copenhagen (EKCH)", "duration": "1h05m"},
-{"airline": "Ryanair", "callsign": "RYR1008", "route": "Munich (EDDM) ➡️ Malta (LMML)", "duration": "2h25m"},
-{"airline": "Ryanair", "callsign": "RYR1190", "route": "Dublin (EIDW) ➡️ Frankfurt (EDDF)", "duration": "1h50m"},
-{"airline": "Ryanair", "callsign": "RYR1456", "route": "Edinburgh (EGPH) ➡️ London Luton (EGGW)", "duration": "1h20m"},
-{"airline": "Ryanair", "callsign": "RYR2102", "route": "Naples (LIRN) ➡️ Barcelona (LEBL)", "duration": "1h40m"},
-{"airline": "Ryanair", "callsign": "RYR2788", "route": "Warsaw Modlin (EPMO) ➡️ Dublin (EIDW)", "duration": "2h55m"},
-
+    {"airline": "Ryanair", "callsign": "RYR1234", "route": "Dublin (EIDW) ➡️ London Stansted (EGSS)", "duration": "1h15m"},
+    {"airline": "Ryanair", "callsign": "RYR2456", "route": "London Stansted (EGSS) ➡️ Barcelona (LEBL)", "duration": "2h10m"},
+    {"airline": "Ryanair", "callsign": "RYR3310", "route": "Dublin (EIDW) ➡️ Amsterdam (EHAM)", "duration": "1h55m"},
+    {"airline": "Ryanair", "callsign": "RYR4112", "route": "Manchester (EGCC) ➡️ Madrid (LEMD)", "duration": "2h30m"},
+    {"airline": "Ryanair", "callsign": "RYR4758", "route": "Dublin (EIDW) ➡️ Milan Bergamo (LIME)", "duration": "2h10m"},
+    {"airline": "Ryanair", "callsign": "RYR5230", "route": "Berlin Brandenburg (EDDB) ➡️ Rome Fiumicino (LIRF)", "duration": "2h05m"},
+    {"airline": "Ryanair", "callsign": "RYR6104", "route": "Lisbon (LPPT) ➡️ Brussels Charleroi (EBCI)", "duration": "2h50m"},
+    {"airline": "Ryanair", "callsign": "RYR7452", "route": "Vienna (LOWW) ➡️ Athens (LGAV)", "duration": "2h15m"},
+    {"airline": "Ryanair", "callsign": "RYR8316", "route": "Madrid (LEMD) ➡️ Dublin (EIDW)", "duration": "2h20m"},
+    {"airline": "Ryanair", "callsign": "RYR9022", "route": "Stockholm Arlanda (ESSA) ➡️ Copenhagen (EKCH)", "duration": "1h05m"},
+    {"airline": "Ryanair", "callsign": "RYR1008", "route": "Munich (EDDM) ➡️ Malta (LMML)", "duration": "2h25m"},
+    {"airline": "Ryanair", "callsign": "RYR1190", "route": "Dublin (EIDW) ➡️ Frankfurt (EDDF)", "duration": "1h50m"},
+    {"airline": "Ryanair", "callsign": "RYR1456", "route": "Edinburgh (EGPH) ➡️ London Luton (EGGW)", "duration": "1h20m"},
+    {"airline": "Ryanair", "callsign": "RYR2102", "route": "Naples (LIRN) ➡️ Barcelona (LEBL)", "duration": "1h40m"},
+    {"airline": "Ryanair", "callsign": "RYR2788", "route": "Warsaw Modlin (EPMO) ➡️ Dublin (EIDW)", "duration": "2h55m"},
 ]
 
 # ----- Persistent Data -----
@@ -185,6 +194,7 @@ def build_contract_embed(contract, status="available", user=None):
     airline = contract["airline"]
     color = AIRLINE_COLORS.get(airline, discord.Color.blue())
     aircraft = contract.get("assigned_aircraft") or assign_aircraft(contract)
+    callsign = contract.get("display_callsign", contract["callsign"])
 
     if status == "expired":
         title = "❌ Contract Expired"
@@ -200,7 +210,7 @@ def build_contract_embed(contract, status="available", user=None):
 
     embed = discord.Embed(title=title, color=color)
     embed.add_field(name="🏢 Airline", value=airline, inline=True)
-    embed.add_field(name="🔢 Callsign", value=f"`{contract['callsign']}`", inline=True)
+    embed.add_field(name="🔢 Callsign", value=f"`{callsign}`", inline=True)
     embed.add_field(name="🗺️ Route", value=contract["route"], inline=False)
     embed.add_field(name="⏱️ Duration", value=f"`{contract['duration']}`", inline=True)
     embed.add_field(name="🛫 Aircraft", value=aircraft, inline=True)
@@ -250,7 +260,7 @@ class AcceptButton(discord.ui.View):
             color=discord.Color.green()
         )
         embed_dm.add_field(name="🏢 Airline", value=self.contract["airline"], inline=False)
-        embed_dm.add_field(name="🔢 Callsign", value=self.contract["callsign"], inline=True)
+        embed_dm.add_field(name="🔢 Callsign", value=self.contract["display_callsign"], inline=True)
         embed_dm.add_field(name="🗺️ Route", value=self.contract["route"], inline=False)
         embed_dm.add_field(name="⏱️ Duration", value=self.contract["duration"], inline=True)
         embed_dm.add_field(name="🛫 Aircraft", value=aircraft, inline=True)
@@ -296,6 +306,8 @@ async def handle_contract_expiration(message_id, channel):
 # ----- Contract Sending -----
 async def send_contract_to_channel(channel, contract):
     contract["assigned_aircraft"] = assign_aircraft(contract)
+    contract["display_callsign"] = maybe_add_phonetic_suffix(contract["callsign"])
+    
     guild = channel.guild
     role = discord.utils.get(guild.roles, name=ROLE_NAMES.get(contract["airline"]))
     role_mention = role.mention if role else ""
