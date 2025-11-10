@@ -3,13 +3,13 @@ import random
 import asyncio
 import time
 import json
+import threading
 from dotenv import load_dotenv
 
 import discord
 from discord.ext import tasks, commands
 from fastapi import FastAPI
 import uvicorn
-import threading
 
 # ----- Load Environment Variables -----
 load_dotenv()
@@ -46,23 +46,25 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 ROLE_NAMES = {
     "Lufthansa": "Lufthansa Pilot",
     "TAP": "TAP AirPortugal Pilot",
-    "EasyJet": "EasyJet Pilot"
+    "EasyJet": "EasyJet Pilot",
+    "Ryanair": "Ryanair Pilot"
 }
 
 AIRLINE_COLORS = {
     "Lufthansa": discord.Color.blue(),
     "TAP": discord.Color.green(),
-    "EasyJet": discord.Color.red()
+    "EasyJet": discord.Color.red(),
+    "Ryanair": discord.Color.yellow()
 }
 
 AIRCRAFTS = {
     "Lufthansa": {"short": ["A319", "A320", "A321"], "long": ["A330", "A340", "A350", "B747", "B787"]},
     "TAP": {"short": ["A319", "A320"], "long": ["A330", "A321LR"]},
-    "EasyJet": {"short": ["A319", "A320", "A321neo"], "long": []}
+    "EasyJet": {"short": ["A319", "A320", "A321neo"], "long": []},
+    "Ryanair": {"short": ["B737-800", "B737 MAX 8-200"], "long": []}
 }
 
 # ----- Contracts -----
-# (Your existing contracts go here — unchanged)
 contracts = [
        # Lufthansa
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
@@ -114,6 +116,24 @@ contracts = [
     {"airline": "EasyJet", "callsign": "EZY607", "route": "Lisbon (LPPT) ➡️ Basel (LFSB)", "duration": "2h30m"},
     {"airline": "EasyJet", "callsign": "EZY908", "route": "Belfast (EGAA) ➡️ Faro (LPFR)", "duration": "3h10m"},
     {"airline": "EasyJet", "callsign": "EZY452", "route": "London Gatwick (EGKK) ➡️ Zurich (LSZH)", "duration": "1h40m"},
+
+    # Ryanair
+{"airline": "Ryanair", "callsign": "RYR1234", "route": "Dublin (EIDW) ➡️ London Stansted (EGSS)", "duration": "1h15m"},
+{"airline": "Ryanair", "callsign": "RYR2456", "route": "London Stansted (EGSS) ➡️ Barcelona (LEBL)", "duration": "2h10m"},
+{"airline": "Ryanair", "callsign": "RYR3310", "route": "Dublin (EIDW) ➡️ Amsterdam (EHAM)", "duration": "1h55m"},
+{"airline": "Ryanair", "callsign": "RYR4112", "route": "Manchester (EGCC) ➡️ Madrid (LEMD)", "duration": "2h30m"},
+{"airline": "Ryanair", "callsign": "RYR4758", "route": "Dublin (EIDW) ➡️ Milan Bergamo (LIME)", "duration": "2h10m"},
+{"airline": "Ryanair", "callsign": "RYR5230", "route": "Berlin Brandenburg (EDDB) ➡️ Rome Fiumicino (LIRF)", "duration": "2h05m"},
+{"airline": "Ryanair", "callsign": "RYR6104", "route": "Lisbon (LPPT) ➡️ Brussels Charleroi (EBCI)", "duration": "2h50m"},
+{"airline": "Ryanair", "callsign": "RYR7452", "route": "Vienna (LOWW) ➡️ Athens (LGAV)", "duration": "2h15m"},
+{"airline": "Ryanair", "callsign": "RYR8316", "route": "Madrid (LEMD) ➡️ Dublin (EIDW)", "duration": "2h20m"},
+{"airline": "Ryanair", "callsign": "RYR9022", "route": "Stockholm Arlanda (ESSA) ➡️ Copenhagen (EKCH)", "duration": "1h05m"},
+{"airline": "Ryanair", "callsign": "RYR1008", "route": "Munich (EDDM) ➡️ Malta (LMML)", "duration": "2h25m"},
+{"airline": "Ryanair", "callsign": "RYR1190", "route": "Dublin (EIDW) ➡️ Frankfurt (EDDF)", "duration": "1h50m"},
+{"airline": "Ryanair", "callsign": "RYR1456", "route": "Edinburgh (EGPH) ➡️ London Luton (EGGW)", "duration": "1h20m"},
+{"airline": "Ryanair", "callsign": "RYR2102", "route": "Naples (LIRN) ➡️ Barcelona (LEBL)", "duration": "1h40m"},
+{"airline": "Ryanair", "callsign": "RYR2788", "route": "Warsaw Modlin (EPMO) ➡️ Dublin (EIDW)", "duration": "2h55m"},
+
 ]
 
 # ----- Persistent Data -----
@@ -132,7 +152,6 @@ def load_logs():
                 return json.load(f)
         except:
             print("⚠️ Could not read pilot_logs.json, starting fresh.")
-            return {}
     return {}
 
 def save_logs():
@@ -166,7 +185,7 @@ def build_contract_embed(contract, status="available", user=None):
     airline = contract["airline"]
     color = AIRLINE_COLORS.get(airline, discord.Color.blue())
     aircraft = contract.get("assigned_aircraft") or assign_aircraft(contract)
-    
+
     if status == "expired":
         title = "❌ Contract Expired"
         color = discord.Color.dark_grey()
@@ -178,7 +197,7 @@ def build_contract_embed(contract, status="available", user=None):
     else:
         title = "✈️ New Contract Available!"
         footer = "Click the button to accept! Contract expires in 40 minutes."
-    
+
     embed = discord.Embed(title=title, color=color)
     embed.add_field(name="🏢 Airline", value=airline, inline=True)
     embed.add_field(name="🔢 Callsign", value=f"`{contract['callsign']}`", inline=True)
@@ -213,22 +232,18 @@ class AcceptButton(discord.ui.View):
             await interaction.response.send_message(f"⏳ You are on cooldown. Wait {remaining} more minutes.", ephemeral=True)
             return
 
-        # Lock contract
         self.locked = True
         user_cooldowns[user.id] = now
         locked_contracts[interaction.message.id]["accepted_by"] = user.id
 
-        # Log flight
         user_id = str(user.id)
         entry = f"{self.contract['callsign']} - {self.contract['airline']} - {self.contract['route']} ({self.contract['duration']})"
         pilot_logs.setdefault(user_id, []).append(entry)
         save_logs()
 
-        # Update embed
         embed = build_contract_embed(self.contract, "accepted", user)
         await interaction.message.edit(embed=embed, view=None)
 
-        # DM
         aircraft = self.contract.get("assigned_aircraft") or assign_aircraft(self.contract)
         embed_dm = discord.Embed(
             title=f"✈️ Contract Accepted: {self.contract['callsign']}",
@@ -241,9 +256,10 @@ class AcceptButton(discord.ui.View):
         embed_dm.add_field(name="🛫 Aircraft", value=aircraft, inline=True)
         embed_dm.add_field(
             name="📋 SimBrief",
-            value="Create a flight plan here: [SimBrief Dispatch](https://dispatch.simbrief.com/options/new)\nIf you don't have a SimBrief account, create one to use the link!",
+            value="[SimBrief Dispatch](https://dispatch.simbrief.com/options/new)",
             inline=False
         )
+
         try:
             await user.send(embed=embed_dm)
         except:
@@ -254,11 +270,11 @@ class AcceptButton(discord.ui.View):
 
 # ----- Expiration Handler -----
 async def handle_contract_expiration(message_id, channel):
-    await asyncio.sleep(40 * 60)  # 40 min → expire
-    if message_id not in locked_contracts:
+    await asyncio.sleep(40 * 60)  # Expire after 40 mins
+    data = locked_contracts.get(message_id)
+    if not data:
         return
 
-    data = locked_contracts[message_id]
     if data["accepted_by"] is None:
         try:
             message = await channel.fetch_message(message_id)
@@ -268,8 +284,7 @@ async def handle_contract_expiration(message_id, channel):
         except Exception as e:
             print(f"Error expiring contract: {e}")
 
-    # Delete after 1 hour regardless of acceptance
-    await asyncio.sleep(20 * 60)
+    await asyncio.sleep(20 * 60)  # Delete 20 min later (total 1 hour)
     try:
         message = await channel.fetch_message(message_id)
         await message.delete()
@@ -282,16 +297,12 @@ async def handle_contract_expiration(message_id, channel):
 async def send_contract_to_channel(channel, contract):
     contract["assigned_aircraft"] = assign_aircraft(contract)
     guild = channel.guild
-    role_mention = ""
     role = discord.utils.get(guild.roles, name=ROLE_NAMES.get(contract["airline"]))
-    if role:
-        role_mention = role.mention
+    role_mention = role.mention if role else ""
 
     embed = build_contract_embed(contract)
     msg = await channel.send(content=role_mention, embed=embed, view=AcceptButton(contract))
     locked_contracts[msg.id] = {"contract": contract, "accepted_by": None}
-
-    # Start expiration timer
     asyncio.create_task(handle_contract_expiration(msg.id, channel))
 
 # ----- Background Loop -----
@@ -315,7 +326,8 @@ async def logbook(interaction: discord.Interaction):
     if not logs:
         await interaction.response.send_message("🪶 You have no recorded flights yet.", ephemeral=True)
         return
-    log_text = "\n".join(logs[-20:])  # last 20 flights
+
+    log_text = "\n".join(logs[-20:])
     embed = discord.Embed(
         title=f"{interaction.user.display_name}'s Pilot Logbook",
         description=log_text,
