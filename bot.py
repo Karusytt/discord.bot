@@ -64,81 +64,83 @@ AIRCRAFTS = {
     "Ryanair": {"short": ["B737-800", "B737 MAX 8-200"], "long": []}
 }
 
-# Phonetic letters for callsign suffixes
 PHONETIC_LETTERS = list("ABCDEFGHJKLMNPQRSTUVWXYZ")  # exclude I/O
 
 def maybe_add_phonetic_suffix(callsign):
-    """Randomly add 1-2 phonetic letters to a callsign."""
-    if random.random() < 0.3:  # 30% chance
-        letters = "".join(random.choices(PHONETIC_LETTERS, k=random.choice([1,2])))
+    """Randomly add 1-2 phonetic letters to a callsign (30% chance)."""
+    if random.random() < 0.3:
+        letters = "".join(random.choices(PHONETIC_LETTERS, k=random.choice([1, 2])))
         return callsign + letters
     return callsign
 
-# ----- Contracts -----
+ # ----- Contracts -----
 contracts = [
-    # Lufthansa
+    # Lufthansa (15 routes)
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
     {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
-    {"airline": "Lufthansa", "callsign": "DLH402", "route": "Munich (EDDM) ➡️ Vienna (LOWW)", "duration": "1h10m"},
     {"airline": "Lufthansa", "callsign": "DLH456", "route": "Frankfurt (EDDF) ➡️ Singapore (WSSS)", "duration": "12h30m"},
     {"airline": "Lufthansa", "callsign": "DLH716", "route": "Frankfurt (EDDF) ➡️ Tokyo (RJTT)", "duration": "11h30m"},
     {"airline": "Lufthansa", "callsign": "DLH506", "route": "Munich (EDDM) ➡️ Dubai (OMDB)", "duration": "6h"},
-    {"airline": "Lufthansa", "callsign": "DLH902", "route": "Frankfurt (EDDF) ➡️ London (EGLL)", "duration": "1h30m"},
+    {"airline": "Lufthansa", "callsign": "DLH332", "route": "Munich (EDDM) ➡️ Vienna (LOWW)", "duration": "1h10m"},
+    {"airline": "Lufthansa", "callsign": "DLH902", "route": "Frankfurt (EDDF) ➡️ London Heathrow (EGLL)", "duration": "1h30m"},
     {"airline": "Lufthansa", "callsign": "DLH234", "route": "Munich (EDDM) ➡️ Paris (LFPG)", "duration": "1h35m"},
     {"airline": "Lufthansa", "callsign": "DLH1358", "route": "Frankfurt (EDDF) ➡️ Barcelona (LEBL)", "duration": "2h10m"},
-    {"airline": "Lufthansa", "callsign": "DLH678", "route": "Frankfurt (EDDF) ➡️ Chicago (KORD)", "duration": "9h"},
-    {"airline": "Lufthansa", "callsign": "DLH722", "route": "Munich (EDDM) ➡️ Beijing (ZBAD)", "duration": "10h"},
-    {"airline": "Lufthansa", "callsign": "DLH1524", "route": "Frankfurt (EDDF) ➡️ Rome (LIRF)", "duration": "1h50m"},
-    {"airline": "Lufthansa", "callsign": "DLH332", "route": "Munich (EDDM) ➡️ Miami (KMIA)", "duration": "10h30m"},
-    {"airline": "Lufthansa", "callsign": "DLH890", "route": "Frankfurt (EDDF) ➡️ Bangkok (VTBS)", "duration": "10h45m"},
     {"airline": "Lufthansa", "callsign": "DLH1166", "route": "Munich (EDDM) ➡️ Copenhagen (EKCH)", "duration": "1h30m"},
-    # TAP
-    {"airline": "TAP", "callsign": "TAP109", "route": "Lisbon (LPPT) ➡️ Sao Paulo (SBGR)", "duration": "10h15m"},
-    {"airline": "TAP", "callsign": "TAP222", "route": "Lisbon (LPPT) ➡️ Boston (KBOS)", "duration": "7h"},
-    {"airline": "TAP", "callsign": "TAP412", "route": "Lisbon (LPPT) ➡️ Porto (LPPR)", "duration": "55m"},
+    {"airline": "Lufthansa", "callsign": "DLH1524", "route": "Frankfurt (EDDF) ➡️ Rome (LIRF)", "duration": "1h50m"},
+    {"airline": "Lufthansa", "callsign": "DLH722", "route": "Munich (EDDM) ➡️ Zurich (LSZH)", "duration": "1h15m"},
+    {"airline": "Lufthansa", "callsign": "DLH890", "route": "Frankfurt (EDDF) ➡️ Brussels (EBBR)", "duration": "1h05m"},
+    {"airline": "Lufthansa", "callsign": "DLH840", "route": "Munich (EDDM) ➡️ Milan Malpensa (LIMC)", "duration": "1h20m"},
+    {"airline": "Lufthansa", "callsign": "DLH768", "route": "Frankfurt (EDDF) ➡️ Amsterdam (EHAM)", "duration": "1h15m"},
+
+    # TAP Air Portugal (15 routes)
+    {"airline": "TAP", "callsign": "TAP109", "route": "Lisbon (LPPT) ➡️ São Paulo (SBGR)", "duration": "10h15m"},
     {"airline": "TAP", "callsign": "TAP115", "route": "Lisbon (LPPT) ➡️ Rio de Janeiro (SBGL)", "duration": "9h45m"},
-    {"airline": "TAP", "callsign": "TAP208", "route": "Lisbon (LPPT) ➡️ New York (KEWR)", "duration": "7h30m"},
-    {"airline": "TAP", "callsign": "TAP931", "route": "Lisbon (LPPT) ➡️ London (EGLL)", "duration": "2h40m"},
-    {"airline": "TAP", "callsign": "TAP558", "route": "Lisbon (LPPT) ➡️ Paris (LFPG)", "duration": "2h20m"},
-    {"airline": "TAP", "callsign": "TAP1692", "route": "Porto (LPPR) ➡️ Amsterdam (EHAM)", "duration": "2h30m"},
-    {"airline": "TAP", "callsign": "TAP501", "route": "Lisbon (LPPT) ➡️ Luanda (FNLU)", "duration": "7h15m"},
-    {"airline": "TAP", "callsign": "TAP1446", "route": "Lisbon (LPPT) ➡️ Brussels (EBBR)", "duration": "2h35m"},
     {"airline": "TAP", "callsign": "TAP90", "route": "Lisbon (LPPT) ➡️ Miami (KMIA)", "duration": "9h30m"},
-    {"airline": "TAP", "callsign": "TAP1936", "route": "Lisbon (LPPT) ➡️ Geneva (LSGG)", "duration": "2h25m"},
     {"airline": "TAP", "callsign": "TAP259", "route": "Lisbon (LPPT) ➡️ Toronto (CYYZ)", "duration": "7h45m"},
-    {"airline": "TAP", "callsign": "TAP1520", "route": "Porto (LPPR) ➡️ Frankfurt (EDDF)", "duration": "2h40m"},
+    {"airline": "TAP", "callsign": "TAP501", "route": "Lisbon (LPPT) ➡️ Luanda (FNLU)", "duration": "7h15m"},
+    {"airline": "TAP", "callsign": "TAP222", "route": "Lisbon (LPPT) ➡️ Boston (KBOS)", "duration": "7h"},
+    {"airline": "TAP", "callsign": "TAP208", "route": "Lisbon (LPPT) ➡️ Newark (KEWR)", "duration": "7h30m"},
+    {"airline": "TAP", "callsign": "TAP1446", "route": "Lisbon (LPPT) ➡️ Brussels (EBBR)", "duration": "2h35m"},
+    {"airline": "TAP", "callsign": "TAP1936", "route": "Lisbon (LPPT) ➡️ Geneva (LSGG)", "duration": "2h25m"},
+    {"airline": "TAP", "callsign": "TAP1520", "route": "Porto (LPPR) ➡️ Amsterdam (EHAM)", "duration": "2h30m"},
+    {"airline": "TAP", "callsign": "TAP412", "route": "Lisbon (LPPT) ➡️ Porto (LPPR)", "duration": "55m"},
     {"airline": "TAP", "callsign": "TAP562", "route": "Lisbon (LPPT) ➡️ Praia (GVNP)", "duration": "4h"},
-    # EasyJet
-    {"airline": "EasyJet", "callsign": "EZY801", "route": "London Gatwick (EGKK) ➡️ Amsterdam (EHAM)", "duration": "1h10m"},
-    {"airline": "EasyJet", "callsign": "EZY215", "route": "Berlin (EDDB) ➡️ Barcelona (LEBL)", "duration": "2h35m"},
-    {"airline": "EasyJet", "callsign": "EZY711", "route": "London Gatwick (EGKK) ➡️ Marrakech (GMMX)", "duration": "3h30m"},
-    {"airline": "EasyJet", "callsign": "EZY115", "route": "Amsterdam (EHAM) ➡️ Lisbon (LPPT)", "duration": "2h50m"},
-    {"airline": "EasyJet", "callsign": "EZY503", "route": "Manchester (EGCC) ➡️ Geneva (LSGG)", "duration": "1h55m"},
-    {"airline": "EasyJet", "callsign": "EZY402", "route": "Bristol (EGGD) ➡️ Rome (LIRF)", "duration": "2h45m"},
-    {"airline": "EasyJet", "callsign": "EZY821", "route": "London Luton (EGGW) ➡️ Budapest (LHBP)", "duration": "2h30m"},
-    {"airline": "EasyJet", "callsign": "EZY332", "route": "Paris Orly (LFPO) ➡️ Nice (LFMN)", "duration": "1h25m"},
-    {"airline": "EasyJet", "callsign": "EZY925", "route": "London Gatwick (EGKK) ➡️ Berlin (EDDB)", "duration": "1h55m"},
-    {"airline": "EasyJet", "callsign": "EZY2105", "route": "Milan Malpensa (LIMC) ➡️ Naples (LIRN)", "duration": "1h25m"},
-    {"airline": "EasyJet", "callsign": "EZY704", "route": "Edinburgh (EGPH) ➡️ Geneva (LSGG)", "duration": "2h5m"},
-    {"airline": "EasyJet", "callsign": "EZY8403", "route": "London Luton (EGGW) ➡️ Amsterdam (EHAM)", "duration": "1h15m"},
-    {"airline": "EasyJet", "callsign": "EZY607", "route": "Lisbon (LPPT) ➡️ Basel (LFSB)", "duration": "2h30m"},
-    {"airline": "EasyJet", "callsign": "EZY908", "route": "Belfast (EGAA) ➡️ Faro (LPFR)", "duration": "3h10m"},
-    {"airline": "EasyJet", "callsign": "EZY452", "route": "London Gatwick (EGKK) ➡️ Zurich (LSZH)", "duration": "1h40m"},
-    # Ryanair
-    {"airline": "Ryanair", "callsign": "RYR1234", "route": "Dublin (EIDW) ➡️ London Stansted (EGSS)", "duration": "1h15m"},
-    {"airline": "Ryanair", "callsign": "RYR2456", "route": "London Stansted (EGSS) ➡️ Barcelona (LEBL)", "duration": "2h10m"},
-    {"airline": "Ryanair", "callsign": "RYR3310", "route": "Dublin (EIDW) ➡️ Amsterdam (EHAM)", "duration": "1h55m"},
-    {"airline": "Ryanair", "callsign": "RYR4112", "route": "Manchester (EGCC) ➡️ Madrid (LEMD)", "duration": "2h30m"},
-    {"airline": "Ryanair", "callsign": "RYR4758", "route": "Dublin (EIDW) ➡️ Milan Bergamo (LIME)", "duration": "2h10m"},
-    {"airline": "Ryanair", "callsign": "RYR5230", "route": "Berlin Brandenburg (EDDB) ➡️ Rome Fiumicino (LIRF)", "duration": "2h05m"},
+    {"airline": "TAP", "callsign": "TAP558", "route": "Lisbon (LPPT) ➡️ Paris (LFPG)", "duration": "2h20m"},
+    {"airline": "TAP", "callsign": "TAP931", "route": "Lisbon (LPPT) ➡️ London Heathrow (EGLL)", "duration": "2h40m"},
+    {"airline": "TAP", "callsign": "TAP1522", "route": "Porto (LPPR) ➡️ Frankfurt (EDDF)", "duration": "2h40m"},
+
+    # EasyJet (15 routes)
+    {"airline": "EasyJet", "callsign": "EZY801", "route": "London Gatwick (EGKK) ➡️ Berlin (EDDB)", "duration": "1h55m"},
+    {"airline": "EasyJet", "callsign": "EZY802", "route": "London Gatwick (EGKK) ➡️ Amsterdam (EHAM)", "duration": "1h10m"},
+    {"airline": "EasyJet", "callsign": "EZY711", "route": "London Luton (EGGW) ➡️ Budapest (LHBP)", "duration": "2h30m"},
+    {"airline": "EasyJet", "callsign": "EZY115", "route": "Paris Orly (LFPO) ➡️ Lisbon (LPPT)", "duration": "2h50m"},
+    {"airline": "EasyJet", "callsign": "EZY503", "route": "Paris Orly (LFPO) ➡️ Nice (LFMN)", "duration": "1h25m"},
+    {"airline": "EasyJet", "callsign": "EZY332", "route": "London Gatwick (EGKK) ➡️ Naples (LIRN)", "duration": "2h10m"},
+    {"airline": "EasyJet", "callsign": "EZY607", "route": "London Luton (EGGW) ➡️ Faro (LPFR)", "duration": "3h10m"},
+    {"airline": "EasyJet", "callsign": "EZY2105", "route": "Milan Malpensa (LIMC) ➡️ Lisbon (LPPT)", "duration": "2h45m"},
+    {"airline": "EasyJet", "callsign": "EZY402", "route": "Manchester (EGCC) ➡️ Geneva (LSGG)", "duration": "1h55m"},
+    {"airline": "EasyJet", "callsign": "EZY452", "route": "Bristol (EGGD) ➡️ Rome (LIRF)", "duration": "2h45m"},
+    {"airline": "EasyJet", "callsign": "EZY704", "route": "Edinburgh (EGPH) ➡️ Geneva (LSGG)", "duration": "2h05m"},
+    {"airline": "EasyJet", "callsign": "EZY8403", "route": "London Gatwick (EGKK) ➡️ Zurich (LSZH)", "duration": "1h40m"},
+    {"airline": "EasyJet", "callsign": "EZY3321", "route": "London Luton (EGGW) ➡️ Amsterdam (EHAM)", "duration": "1h15m"},
+    {"airline": "EasyJet", "callsign": "EZY908", "route": "Basel (LFSB) ➡️ Palma de Mallorca (LEPA)", "duration": "2h10m"},
+    {"airline": "EasyJet", "callsign": "EZY2100", "route": "London Luton (EGGW) ➡️ Paris Orly (LFPO)", "duration": "1h20m"},
+
+    # Ryanair (15 routes)
+    {"airline": "Ryanair", "callsign": "RYR1234", "route": "Dublin (EIDW) ➡️ Milan Bergamo (LIME)", "duration": "2h10m"},
+    {"airline": "Ryanair", "callsign": "RYR2456", "route": "Berlin Brandenburg (EDDB) ➡️ Rome Ciampino (LIRA)", "duration": "2h05m"},
+    {"airline": "Ryanair", "callsign": "RYR4758", "route": "Vienna (LOWW) ➡️ Athens (LGAV)", "duration": "2h15m"},
     {"airline": "Ryanair", "callsign": "RYR6104", "route": "Lisbon (LPPT) ➡️ Brussels Charleroi (EBCI)", "duration": "2h50m"},
-    {"airline": "Ryanair", "callsign": "RYR7452", "route": "Vienna (LOWW) ➡️ Athens (LGAV)", "duration": "2h15m"},
     {"airline": "Ryanair", "callsign": "RYR8316", "route": "Madrid (LEMD) ➡️ Dublin (EIDW)", "duration": "2h20m"},
-    {"airline": "Ryanair", "callsign": "RYR9022", "route": "Stockholm Arlanda (ESSA) ➡️ Copenhagen (EKCH)", "duration": "1h05m"},
+    {"airline": "Ryanair", "callsign": "RYR3310", "route": "London Stansted (EGSS) ➡️ Barcelona (LEBL)", "duration": "2h10m"},
+    {"airline": "Ryanair", "callsign": "RYR4112", "route": "Manchester (EGCC) ➡️ Madrid (LEMD)", "duration": "2h30m"},
     {"airline": "Ryanair", "callsign": "RYR1008", "route": "Munich (EDDM) ➡️ Malta (LMML)", "duration": "2h25m"},
     {"airline": "Ryanair", "callsign": "RYR1190", "route": "Dublin (EIDW) ➡️ Frankfurt (EDDF)", "duration": "1h50m"},
-    {"airline": "Ryanair", "callsign": "RYR1456", "route": "Edinburgh (EGPH) ➡️ London Luton (EGGW)", "duration": "1h20m"},
     {"airline": "Ryanair", "callsign": "RYR2102", "route": "Naples (LIRN) ➡️ Barcelona (LEBL)", "duration": "1h40m"},
+    {"airline": "Ryanair", "callsign": "RYR1235", "route": "Dublin (EIDW) ➡️ London Stansted (EGSS)", "duration": "1h15m"},
+    {"airline": "Ryanair", "callsign": "RYR5230", "route": "Dublin (EIDW) ➡️ Amsterdam (EHAM)", "duration": "1h55m"},
+    {"airline": "Ryanair", "callsign": "RYR7452", "route": "Edinburgh (EGPH) ➡️ London Stansted (EGSS)", "duration": "1h20m"},
+    {"airline": "Ryanair", "callsign": "RYR9022", "route": "Stockholm Skavsta (ESKN) ➡️ Copenhagen (EKCH)", "duration": "1h05m"},
     {"airline": "Ryanair", "callsign": "RYR2788", "route": "Warsaw Modlin (EPMO) ➡️ Dublin (EIDW)", "duration": "2h55m"},
 ]
 
@@ -251,19 +253,21 @@ class AcceptButton(discord.ui.View):
         embed = build_contract_embed(self.contract, "accepted", user)
         await interaction.message.edit(embed=embed, view=None)
 
+        # ----- DM with bold fields + SimBrief -----
         aircraft = self.contract.get("assigned_aircraft") or assign_aircraft(self.contract)
         embed_dm = discord.Embed(
-            title=f"✈️ Contract Accepted: {self.contract['callsign']}",
+            title=f"✈️ Contract Accepted: **{self.contract['callsign']}**",
             color=discord.Color.green()
         )
-        embed_dm.add_field(name="🏢 Airline", value=self.contract["airline"], inline=False)
-        embed_dm.add_field(name="🔢 Callsign", value=self.contract["display_callsign"], inline=True)
-        embed_dm.add_field(name="🗺️ Route", value=self.contract["route"], inline=False)
-        embed_dm.add_field(name="⏱️ Duration", value=self.contract["duration"], inline=True)
-        embed_dm.add_field(name="🛫 Aircraft", value=aircraft, inline=True)
+        embed_dm.add_field(name="🏢 Airline", value=f"**{self.contract['airline']}**", inline=False)
+        embed_dm.add_field(name="🔢 Callsign", value=f"**{self.contract['display_callsign']}**", inline=True)
+        embed_dm.add_field(name="🗺️ Route", value=f"**{self.contract['route']}**", inline=False)
+        embed_dm.add_field(name="⏱️ Duration", value=f"**{self.contract['duration']}**", inline=True)
+        embed_dm.add_field(name="🛫 Aircraft", value=f"**{aircraft}**", inline=True)
         embed_dm.add_field(
             name="📋 SimBrief",
-            value="[SimBrief Dispatch](https://dispatch.simbrief.com/options/new)",
+            value="Create a flight plan here: [SimBrief Dispatch](https://dispatch.simbrief.com/options/new)\n"
+                  "If you don't have a SimBrief account, create one to use the link!",
             inline=False
         )
 
@@ -314,7 +318,7 @@ async def send_contract_to_channel(channel, contract):
     locked_contracts[msg.id] = {"contract": contract, "accepted_by": None}
     asyncio.create_task(handle_contract_expiration(msg.id, channel))
 
-# ----- Background Loop (normal 1-5 min) -----
+# ----- Background Loop (1-5 min) -----
 @tasks.loop(seconds=1)
 async def send_contract_loop():
     global last_sent_contract
