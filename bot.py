@@ -206,7 +206,7 @@ def build_contract_embed(contract, status="available", user=None):
         footer = "This contract has been taken."
     else:
         title = "✈️ New Contract Available!"
-        footer = "Click the button to accept! Contract expires in 40 minutes."
+        footer = "Click the button to accept! Contract expires soon."
 
     embed = discord.Embed(title=title, color=color)
     embed.add_field(name="🏢 Airline", value=airline, inline=True)
@@ -278,9 +278,9 @@ class AcceptButton(discord.ui.View):
 
         await interaction.response.send_message("✅ You have accepted this contract!", ephemeral=True)
 
-# ----- Expiration Handler -----
+# ----- Expiration Handler (Testing: 10 seconds) -----
 async def handle_contract_expiration(message_id, channel):
-    await asyncio.sleep(40 * 60)  # Expire after 40 mins
+    await asyncio.sleep(10)  # expire after 10 seconds for testing
     data = locked_contracts.get(message_id)
     if not data:
         return
@@ -294,12 +294,12 @@ async def handle_contract_expiration(message_id, channel):
         except Exception as e:
             print(f"Error expiring contract: {e}")
 
-    await asyncio.sleep(20 * 60)  # Delete 20 min later (total 1 hour)
+    await asyncio.sleep(5)  # delete 5 seconds later (total 15s for testing)
     try:
         message = await channel.fetch_message(message_id)
         await message.delete()
         locked_contracts.pop(message_id, None)
-        print(f"Contract {message_id} deleted after 1 hour.")
+        print(f"Contract {message_id} deleted after testing.")
     except Exception as e:
         print(f"Error deleting contract: {e}")
 
@@ -317,7 +317,7 @@ async def send_contract_to_channel(channel, contract):
     locked_contracts[msg.id] = {"contract": contract, "accepted_by": None}
     asyncio.create_task(handle_contract_expiration(msg.id, channel))
 
-# ----- Background Loop -----
+# ----- Background Loop (Testing: 10 seconds) -----
 @tasks.loop(seconds=1)
 async def send_contract_loop():
     global last_sent_contract
@@ -328,7 +328,7 @@ async def send_contract_loop():
     contract = random.choice(available_contracts or contracts)
     last_sent_contract = contract
     await send_contract_to_channel(channel, contract)
-    await asyncio.sleep(random.randint(60, 300))
+    await asyncio.sleep(10)  # 10 seconds for testing
 
 # ----- Logbook Command -----
 @bot.tree.command(name="logbook", description="Show your pilot logbook", guild=discord.Object(id=GUILD_ID))
