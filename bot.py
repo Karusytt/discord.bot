@@ -76,7 +76,7 @@ def maybe_add_phonetic_suffix(callsign):
 
 # ----- Contracts -----
 contracts = [
- # Lufthansa
+    # Lufthansa
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
     {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
     {"airline": "Lufthansa", "callsign": "DLH402", "route": "Munich (EDDM) ➡️ Vienna (LOWW)", "duration": "1h10m"},
@@ -92,7 +92,6 @@ contracts = [
     {"airline": "Lufthansa", "callsign": "DLH332", "route": "Munich (EDDM) ➡️ Miami (KMIA)", "duration": "10h30m"},
     {"airline": "Lufthansa", "callsign": "DLH890", "route": "Frankfurt (EDDF) ➡️ Bangkok (VTBS)", "duration": "10h45m"},
     {"airline": "Lufthansa", "callsign": "DLH1166", "route": "Munich (EDDM) ➡️ Copenhagen (EKCH)", "duration": "1h30m"},
-
     # TAP
     {"airline": "TAP", "callsign": "TAP109", "route": "Lisbon (LPPT) ➡️ Sao Paulo (SBGR)", "duration": "10h15m"},
     {"airline": "TAP", "callsign": "TAP222", "route": "Lisbon (LPPT) ➡️ Boston (KBOS)", "duration": "7h"},
@@ -109,7 +108,6 @@ contracts = [
     {"airline": "TAP", "callsign": "TAP259", "route": "Lisbon (LPPT) ➡️ Toronto (CYYZ)", "duration": "7h45m"},
     {"airline": "TAP", "callsign": "TAP1520", "route": "Porto (LPPR) ➡️ Frankfurt (EDDF)", "duration": "2h40m"},
     {"airline": "TAP", "callsign": "TAP562", "route": "Lisbon (LPPT) ➡️ Praia (GVNP)", "duration": "4h"},
-
     # EasyJet
     {"airline": "EasyJet", "callsign": "EZY801", "route": "London Gatwick (EGKK) ➡️ Amsterdam (EHAM)", "duration": "1h10m"},
     {"airline": "EasyJet", "callsign": "EZY215", "route": "Berlin (EDDB) ➡️ Barcelona (LEBL)", "duration": "2h35m"},
@@ -126,7 +124,6 @@ contracts = [
     {"airline": "EasyJet", "callsign": "EZY607", "route": "Lisbon (LPPT) ➡️ Basel (LFSB)", "duration": "2h30m"},
     {"airline": "EasyJet", "callsign": "EZY908", "route": "Belfast (EGAA) ➡️ Faro (LPFR)", "duration": "3h10m"},
     {"airline": "EasyJet", "callsign": "EZY452", "route": "London Gatwick (EGKK) ➡️ Zurich (LSZH)", "duration": "1h40m"},
-
     # Ryanair
     {"airline": "Ryanair", "callsign": "RYR1234", "route": "Dublin (EIDW) ➡️ London Stansted (EGSS)", "duration": "1h15m"},
     {"airline": "Ryanair", "callsign": "RYR2456", "route": "London Stansted (EGSS) ➡️ Barcelona (LEBL)", "duration": "2h10m"},
@@ -206,7 +203,7 @@ def build_contract_embed(contract, status="available", user=None):
         footer = "This contract has been taken."
     else:
         title = "✈️ New Contract Available!"
-        footer = "Click the button to accept! Contract expires soon."
+        footer = "Click the button to accept! Contract expires in 40 minutes."
 
     embed = discord.Embed(title=title, color=color)
     embed.add_field(name="🏢 Airline", value=airline, inline=True)
@@ -278,9 +275,9 @@ class AcceptButton(discord.ui.View):
 
         await interaction.response.send_message("✅ You have accepted this contract!", ephemeral=True)
 
-# ----- Expiration Handler (Testing: 10 seconds) -----
+# ----- Expiration Handler -----
 async def handle_contract_expiration(message_id, channel):
-    await asyncio.sleep(10)  # expire after 10 seconds for testing
+    await asyncio.sleep(40 * 60)  # Expire after 40 mins
     data = locked_contracts.get(message_id)
     if not data:
         return
@@ -294,12 +291,12 @@ async def handle_contract_expiration(message_id, channel):
         except Exception as e:
             print(f"Error expiring contract: {e}")
 
-    await asyncio.sleep(5)  # delete 5 seconds later (total 15s for testing)
+    await asyncio.sleep(20 * 60)  # Delete 20 min later (total 1 hour)
     try:
         message = await channel.fetch_message(message_id)
         await message.delete()
         locked_contracts.pop(message_id, None)
-        print(f"Contract {message_id} deleted after testing.")
+        print(f"Contract {message_id} deleted after 1 hour.")
     except Exception as e:
         print(f"Error deleting contract: {e}")
 
@@ -317,7 +314,7 @@ async def send_contract_to_channel(channel, contract):
     locked_contracts[msg.id] = {"contract": contract, "accepted_by": None}
     asyncio.create_task(handle_contract_expiration(msg.id, channel))
 
-# ----- Background Loop (Testing: 10 seconds) -----
+# ----- Background Loop (normal 1-5 min) -----
 @tasks.loop(seconds=1)
 async def send_contract_loop():
     global last_sent_contract
@@ -328,7 +325,7 @@ async def send_contract_loop():
     contract = random.choice(available_contracts or contracts)
     last_sent_contract = contract
     await send_contract_to_channel(channel, contract)
-    await asyncio.sleep(10)  # 10 seconds for testing
+    await asyncio.sleep(random.randint(60, 300))  # 1-5 minutes
 
 # ----- Logbook Command -----
 @bot.tree.command(name="logbook", description="Show your pilot logbook", guild=discord.Object(id=GUILD_ID))
