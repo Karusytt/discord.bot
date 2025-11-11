@@ -47,21 +47,24 @@ ROLE_NAMES = {
     "Lufthansa": "Lufthansa Pilot",
     "TAP": "TAP AirPortugal Pilot",
     "EasyJet": "EasyJet Pilot",
-    "Ryanair": "Ryanair Pilot"
+    "Ryanair": "Ryanair Pilot",
+    "Emirates": "Emirates Pilot"
 }
 
 AIRLINE_COLORS = {
     "Lufthansa": discord.Color.blue(),
     "TAP": discord.Color.green(),
     "EasyJet": discord.Color.red(),
-    "Ryanair": discord.Color.yellow()
+    "Ryanair": discord.Color.yellow(),
+    "Emirates": discord.Color.purple()
 }
 
 AIRCRAFTS = {
     "Lufthansa": {"short": ["A319", "A320", "A321"], "long": ["A330", "A340", "A350", "B747", "B787"]},
     "TAP": {"short": ["A319", "A320"], "long": ["A330", "A321LR"]},
     "EasyJet": {"short": ["A319", "A320", "A321neo"], "long": []},
-    "Ryanair": {"short": ["B737-800", "B737 MAX 8-200"], "long": []}
+    "Ryanair": {"short": ["B737-800", "B737 MAX 8-200"], "long": []},
+    "Emirates": {"short": [], "long": ["B777-300ER", "A380", "B787-9", "A350-900"]}
 }
 
 PHONETIC_LETTERS = list("ABCDEFGHJKLMNPQRSTUVWXYZ")  # exclude I/O
@@ -73,7 +76,7 @@ def maybe_add_phonetic_suffix(callsign):
         return callsign + letters
     return callsign
 
- # ----- Contracts -----
+# ----- Contracts -----
 contracts = [
     # Lufthansa (15 routes)
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
@@ -142,6 +145,23 @@ contracts = [
     {"airline": "Ryanair", "callsign": "RYR7452", "route": "Edinburgh (EGPH) ➡️ London Stansted (EGSS)", "duration": "1h20m"},
     {"airline": "Ryanair", "callsign": "RYR9022", "route": "Stockholm Skavsta (ESKN) ➡️ Copenhagen (EKCH)", "duration": "1h05m"},
     {"airline": "Ryanair", "callsign": "RYR2788", "route": "Warsaw Modlin (EPMO) ➡️ Dublin (EIDW)", "duration": "2h55m"},
+
+    # Emirates (15 routes)
+    {"airline": "Emirates", "callsign": "UAE25", "route": "Dubai (OMDB) ➡️ London Heathrow (EGLL)", "duration": "7h30m"},
+    {"airline": "Emirates", "callsign": "UAE26", "route": "London Heathrow (EGLL) ➡️ Dubai (OMDB)", "duration": "7h15m"},
+    {"airline": "Emirates", "callsign": "UAE203", "route": "Dubai (OMDB) ➡️ New York JFK (KJFK)", "duration": "14h0m"},
+    {"airline": "Emirates", "callsign": "UAE204", "route": "New York JFK (KJFK) ➡️ Dubai (OMDB)", "duration": "13h50m"},
+    {"airline": "Emirates", "callsign": "UAE215", "route": "Dubai (OMDB) ➡️ Los Angeles (KLAX)", "duration": "16h0m"},
+    {"airline": "Emirates", "callsign": "UAE412", "route": "Dubai (OMDB) ➡️ Sydney (YSSY)", "duration": "14h30m"},
+    {"airline": "Emirates", "callsign": "UAE413", "route": "Sydney (YSSY) ➡️ Dubai (OMDB)", "duration": "14h15m"},
+    {"airline": "Emirates", "callsign": "UAE354", "route": "Dubai (OMDB) ➡️ Singapore (WSSS)", "duration": "7h10m"},
+    {"airline": "Emirates", "callsign": "UAE355", "route": "Singapore (WSSS) ➡️ Dubai (OMDB)", "duration": "7h0m"},
+    {"airline": "Emirates", "callsign": "UAE49", "route": "Dubai (OMDB) ➡️ Frankfurt (EDDF)", "duration": "6h45m"},
+    {"airline": "Emirates", "callsign": "UAE50", "route": "Frankfurt (EDDF) ➡️ Dubai (OMDB)", "duration": "6h30m"},
+    {"airline": "Emirates", "callsign": "UAE763", "route": "Dubai (OMDB) ➡️ Johannesburg (FAOR)", "duration": "8h0m"},
+    {"airline": "Emirates", "callsign": "UAE764", "route": "Johannesburg (FAOR) ➡️ Dubai (OMDB)", "duration": "8h10m"},
+    {"airline": "Emirates", "callsign": "UAE318", "route": "Dubai (OMDB) ➡️ Tokyo Haneda (RJTT)", "duration": "9h0m"},
+    {"airline": "Emirates", "callsign": "UAE319", "route": "Tokyo Haneda (RJTT) ➡️ Dubai (OMDB)", "duration": "9h10m"},
 ]
 
 # ----- Persistent Data -----
@@ -185,7 +205,7 @@ def assign_aircraft(contract):
     total_minutes = hours * 60 + minutes
     airline = contract["airline"]
     if total_minutes <= 180:
-        return random.choice(AIRCRAFTS[airline]["short"])
+        return random.choice(AIRCRAFTS[airline]["short"] or AIRCRAFTS[airline]["long"])
     else:
         return random.choice(AIRCRAFTS[airline]["long"] or AIRCRAFTS[airline]["short"])
 
