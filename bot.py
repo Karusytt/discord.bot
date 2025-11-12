@@ -48,7 +48,8 @@ ROLE_NAMES = {
     "TAP": "TAP AirPortugal Pilot",
     "EasyJet": "EasyJet Pilot",
     "Ryanair": "Ryanair Pilot",
-    "Emirates": "Emirates Pilot"
+    "Emirates": "Emirates Pilot",
+    "Eurowings": "Eurowings Pilot"
 }
 
 AIRLINE_COLORS = {
@@ -56,7 +57,8 @@ AIRLINE_COLORS = {
     "TAP": discord.Color.green(),
     "EasyJet": discord.Color.red(),
     "Ryanair": discord.Color.yellow(),
-    "Emirates": discord.Color.purple()
+    "Emirates": discord.Color.purple(),
+    "Eurowings": discord.Color.from_str("#8F174F")
 }
 
 AIRCRAFTS = {
@@ -64,7 +66,8 @@ AIRCRAFTS = {
     "TAP": {"short": ["A319", "A320"], "long": ["A330", "A321LR"]},
     "EasyJet": {"short": ["A319", "A320", "A321neo"], "long": []},
     "Ryanair": {"short": ["B737-800", "B737 MAX 8-200"], "long": []},
-    "Emirates": {"short": [], "long": ["B777-300ER", "A380", "B787-9", "A350-900"]}
+    "Emirates": {"short": [], "long": ["B777-300ER", "A380", "B787-9", "A350-900"]},
+    "Eurowings": {"short": ["A319", "A320", "A321"], "long": []}
 }
 
 PHONETIC_LETTERS = list("ABCDEFGHJKLMNPQRSTUVWXYZ")  # exclude I/O
@@ -162,6 +165,23 @@ contracts = [
     {"airline": "Emirates", "callsign": "UAE764", "route": "Johannesburg (FAOR) ➡️ Dubai (OMDB)", "duration": "8h10m"},
     {"airline": "Emirates", "callsign": "UAE318", "route": "Dubai (OMDB) ➡️ Tokyo Haneda (RJTT)", "duration": "9h0m"},
     {"airline": "Emirates", "callsign": "UAE319", "route": "Tokyo Haneda (RJTT) ➡️ Dubai (OMDB)", "duration": "9h10m"},
+
+    # Eurowings (15 routes, mix of one-way + some return flights)
+    {"airline": "Eurowings", "callsign": "EWG12", "route": "Cologne (EDDK) ➡️ Berlin Brandenburg (EDDB)", "duration": "1h10m"},
+    {"airline": "Eurowings", "callsign": "EWG45", "route": "Düsseldorf (EDDL) ➡️ Vienna (LOWW)", "duration": "1h35m"},
+    {"airline": "Eurowings", "callsign": "EWG84", "route": "Hamburg (EDDH) ➡️ Munich (EDDM)", "duration": "1h10m"},
+    {"airline": "Eurowings", "callsign": "EWG152", "route": "Stuttgart (EDDS) ➡️ Palma de Mallorca (LEPA)", "duration": "2h05m"},
+    {"airline": "Eurowings", "callsign": "EWG153", "route": "Palma de Mallorca (LEPA) ➡️ Stuttgart (EDDS)", "duration": "2h05m"},  # return
+    {"airline": "Eurowings", "callsign": "EWG203", "route": "Cologne (EDDK) ➡️ Barcelona (LEBL)", "duration": "2h15m"},
+    {"airline": "Eurowings", "callsign": "EWG266", "route": "Hamburg (EDDH) ➡️ Rome Fiumicino (LIRF)", "duration": "2h20m"},
+    {"airline": "Eurowings", "callsign": "EWG311", "route": "Düsseldorf (EDDL) ➡️ Athens (LGAV)", "duration": "3h00m"},
+    {"airline": "Eurowings", "callsign": "EWG334", "route": "Stuttgart (EDDS) ➡️ Lisbon (LPPT)", "duration": "3h00m"},
+    {"airline": "Eurowings", "callsign": "EWG335", "route": "Lisbon (LPPT) ➡️ Stuttgart (EDDS)", "duration": "3h00m"},  # return
+    {"airline": "Eurowings", "callsign": "EWG402", "route": "Cologne (EDDK) ➡️ Prague (LKPR)", "duration": "1h20m"},
+    {"airline": "Eurowings", "callsign": "EWG431", "route": "Hamburg (EDDH) ➡️ London Heathrow (EGLL)", "duration": "1h45m"},
+    {"airline": "Eurowings", "callsign": "EWG520", "route": "Düsseldorf (EDDL) ➡️ Zurich (LSZH)", "duration": "1h10m"},
+    {"airline": "Eurowings", "callsign": "EWG855", "route": "Hamburg (EDDH) ➡️ Malaga (LEMG)", "duration": "3h00m"},
+    {"airline": "Eurowings", "callsign": "EWG920", "route": "Düsseldorf (EDDL) ➡️ Tenerife South (GCTS)", "duration": "4h40m"},
 ]
 
 # ----- Persistent Data -----
@@ -197,17 +217,31 @@ def assign_aircraft(contract):
     hours = minutes = 0
     if "h" in dur:
         parts = dur.split("h")
-        hours = int(parts[0])
+        try:
+            hours = int(parts[0])
+        except:
+            hours = 0
         if "m" in parts[1]:
-            minutes = int(parts[1].replace("m", ""))
+            try:
+                minutes = int(parts[1].replace("m", ""))
+            except:
+                minutes = 0
     else:
-        minutes = int(dur.replace("m", ""))
+        try:
+            minutes = int(dur.replace("m", ""))
+        except:
+            minutes = 0
     total_minutes = hours * 60 + minutes
     airline = contract["airline"]
+    shorts = AIRCRAFTS.get(airline, {}).get("short", [])
+    longs = AIRCRAFTS.get(airline, {}).get("long", [])
+
     if total_minutes <= 180:
-        return random.choice(AIRCRAFTS[airline]["short"] or AIRCRAFTS[airline]["long"])
+        # prefer short-haul fleet, fallback to long if none
+        return random.choice(shorts) if shorts else (random.choice(longs) if longs else "Unknown")
     else:
-        return random.choice(AIRCRAFTS[airline]["long"] or AIRCRAFTS[airline]["short"])
+        # prefer long-haul fleet, fallback to short if none
+        return random.choice(longs) if longs else (random.choice(shorts) if shorts else "Unknown")
 
 def build_contract_embed(contract, status="available", user=None):
     airline = contract["airline"]
@@ -280,7 +314,7 @@ class AcceptButton(discord.ui.View):
             color=discord.Color.green()
         )
         embed_dm.add_field(name="🏢 Airline", value=f"**{self.contract['airline']}**", inline=False)
-        embed_dm.add_field(name="🔢 Callsign", value=f"**{self.contract['display_callsign']}**", inline=True)
+        embed_dm.add_field(name="🔢 Callsign", value=f"**{self.contract.get('display_callsign', self.contract['callsign'])}**", inline=True)
         embed_dm.add_field(name="🗺️ Route", value=f"**{self.contract['route']}**", inline=False)
         embed_dm.add_field(name="⏱️ Duration", value=f"**{self.contract['duration']}**", inline=True)
         embed_dm.add_field(name="🛫 Aircraft", value=f"**{aircraft}**", inline=True)
