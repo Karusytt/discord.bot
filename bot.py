@@ -49,7 +49,8 @@ ROLE_NAMES = {
     "EasyJet": "EasyJet Pilot",
     "Ryanair": "Ryanair Pilot",
     "Emirates": "Emirates Pilot",
-    "Eurowings": "Eurowings Pilot"
+    "Eurowings": "Eurowings Pilot",
+    "KLM": "KLM Pilot"
 }
 
 AIRLINE_COLORS = {
@@ -58,7 +59,8 @@ AIRLINE_COLORS = {
     "EasyJet": discord.Color.red(),
     "Ryanair": discord.Color.yellow(),
     "Emirates": discord.Color.purple(),
-    "Eurowings": discord.Color.from_str("#8F174F")
+    "Eurowings": discord.Color.from_str("#8F174F"),
+    "KLM": discord.Color.from_str("#0052A1")
 }
 
 AIRCRAFTS = {
@@ -67,7 +69,8 @@ AIRCRAFTS = {
     "EasyJet": {"short": ["A319", "A320", "A321neo"], "long": []},
     "Ryanair": {"short": ["B737-800", "B737 MAX 8-200"], "long": []},
     "Emirates": {"short": [], "long": ["B777-300ER", "A380", "B787-9", "A350-900"]},
-    "Eurowings": {"short": ["A319", "A320", "A321"], "long": []}
+    "Eurowings": {"short": ["A319", "A320", "A321"], "long": []},
+    "KLM": {"short": ["E175", "E190", "E195", "B737-700", "B737-800", "B737-900"], "long": ["B777-200", "B777-300", "B787-9", "B787-10", "A330-200", "A330-300"]}
 }
 
 PHONETIC_LETTERS = list("ABCDEFGHJKLMNPQRSTUVWXYZ")  # exclude I/O
@@ -182,6 +185,23 @@ contracts = [
     {"airline": "Eurowings", "callsign": "EWG520", "route": "Düsseldorf (EDDL) ➡️ Zurich (LSZH)", "duration": "1h10m"},
     {"airline": "Eurowings", "callsign": "EWG855", "route": "Hamburg (EDDH) ➡️ Malaga (LEMG)", "duration": "3h00m"},
     {"airline": "Eurowings", "callsign": "EWG920", "route": "Düsseldorf (EDDL) ➡️ Tenerife South (GCTS)", "duration": "4h40m"},
+
+    # KLM (15 routes)
+    {"airline": "KLM", "callsign": "KLM101", "route": "Amsterdam (EHAM) ➡️ London Heathrow (EGLL)", "duration": "1h05m"},
+    {"airline": "KLM", "callsign": "KLM735", "route": "Amsterdam (EHAM) ➡️ Frankfurt (EDDF)", "duration": "1h00m"},
+    {"airline": "KLM", "callsign": "KLM1363", "route": "Amsterdam (EHAM) ➡️ Paris Charles de Gaulle (LFPG)", "duration": "1h15m"},
+    {"airline": "KLM", "callsign": "KLM857", "route": "Amsterdam (EHAM) ➡️ Madrid (LEMD)", "duration": "2h25m"},
+    {"airline": "KLM", "callsign": "KLM1691", "route": "Amsterdam (EHAM) ➡️ Rome Fiumicino (LIRF)", "duration": "2h15m"},
+    {"airline": "KLM", "callsign": "KLM933", "route": "Amsterdam (EHAM) ➡️ Stockholm Arlanda (ESSA)", "duration": "1h55m"},
+    {"airline": "KLM", "callsign": "KLM601", "route": "Amsterdam (EHAM) ➡️ Warsaw (EPWA)", "duration": "1h50m"},
+    {"airline": "KLM", "callsign": "KLM641", "route": "Amsterdam (EHAM) ➡️ Budapest (LHBP)", "duration": "1h55m"},
+    {"airline": "KLM", "callsign": "KLM1507", "route": "Amsterdam (EHAM) ➡️ Lisbon (LPPT)", "duration": "2h50m"},
+    {"airline": "KLM", "callsign": "KLM785", "route": "Amsterdam (EHAM) ➡️ Helsinki (EFHK)", "duration": "2h20m"},
+    {"airline": "KLM", "callsign": "KLM2043", "route": "Amsterdam (EHAM) ➡️ Istanbul (LTFM)", "duration": "3h25m"},
+    {"airline": "KLM", "callsign": "KLM6011", "route": "Amsterdam (EHAM) ➡️ New York JFK (KJFK)", "duration": "8h05m"},
+    {"airline": "KLM", "callsign": "KLM589", "route": "Amsterdam (EHAM) ➡️ Dubai (OMDB)", "duration": "6h30m"},
+    {"airline": "KLM", "callsign": "KLM887", "route": "Amsterdam (EHAM) ➡️ Tokyo Narita (RJAA)", "duration": "11h20m"},
+    {"airline": "KLM", "callsign": "KLM563", "route": "Amsterdam (EHAM) ➡️ São Paulo Guarulhos (SBGR)", "duration": "11h40m"}
 ]
 
 # ----- Persistent Data -----
