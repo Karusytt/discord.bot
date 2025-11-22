@@ -87,7 +87,141 @@ def maybe_add_phonetic_suffix(callsign):
 
 # ----- Contracts -----
 contracts = [
-    # Your contracts here (I'll skip them as requested)
+  # Lufthansa (15 routes)
+    {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
+    {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
+    {"airline": "Lufthansa", "callsign": "DLH456", "route": "Frankfurt (EDDF) ➡️ Singapore (WSSS)", "duration": "12h30m"},
+    {"airline": "Lufthansa", "callsign": "DLH716", "route": "Frankfurt (EDDF) ➡️ Tokyo (RJTT)", "duration": "11h30m"},
+    {"airline": "Lufthansa", "callsign": "DLH506", "route": "Munich (EDDM) ➡️ Dubai (OMDB)", "duration": "6h"},
+    {"airline": "Lufthansa", "callsign": "DLH332", "route": "Munich (EDDM) ➡️ Vienna (LOWW)", "duration": "1h10m"},
+    {"airline": "Lufthansa", "callsign": "DLH902", "route": "Frankfurt (EDDF) ➡️ London Heathrow (EGLL)", "duration": "1h30m"},
+    {"airline": "Lufthansa", "callsign": "DLH234", "route": "Munich (EDDM) ➡️ Paris (LFPG)", "duration": "1h35m"},
+    {"airline": "Lufthansa", "callsign": "DLH1358", "route": "Frankfurt (EDDF) ➡️ Barcelona (LEBL)", "duration": "2h10m"},
+    {"airline": "Lufthansa", "callsign": "DLH1166", "route": "Munich (EDDM) ➡️ Copenhagen (EKCH)", "duration": "1h30m"},
+    {"airline": "Lufthansa", "callsign": "DLH1524", "route": "Frankfurt (EDDF) ➡️ Rome (LIRF)", "duration": "1h50m"},
+    {"airline": "Lufthansa", "callsign": "DLH722", "route": "Munich (EDDM) ➡️ Zurich (LSZH)", "duration": "1h15m"},
+    {"airline": "Lufthansa", "callsign": "DLH890", "route": "Frankfurt (EDDF) ➡️ Brussels (EBBR)", "duration": "1h05m"},
+    {"airline": "Lufthansa", "callsign": "DLH840", "route": "Munich (EDDM) ➡️ Milan Malpensa (LIMC)", "duration": "1h20m"},
+    {"airline": "Lufthansa", "callsign": "DLH768", "route": "Frankfurt (EDDF) ➡️ Amsterdam (EHAM)", "duration": "1h15m"},
+
+    # TAP Air Portugal (15 routes)
+    {"airline": "TAP", "callsign": "TAP109", "route": "Lisbon (LPPT) ➡️ São Paulo (SBGR)", "duration": "10h15m"},
+    {"airline": "TAP", "callsign": "TAP115", "route": "Lisbon (LPPT) ➡️ Rio de Janeiro (SBGL)", "duration": "9h45m"},
+    {"airline": "TAP", "callsign": "TAP90", "route": "Lisbon (LPPT) ➡️ Miami (KMIA)", "duration": "9h30m"},
+    {"airline": "TAP", "callsign": "TAP259", "route": "Lisbon (LPPT) ➡️ Toronto (CYYZ)", "duration": "7h45m"},
+    {"airline": "TAP", "callsign": "TAP501", "route": "Lisbon (LPPT) ➡️ Luanda (FNLU)", "duration": "7h15m"},
+    {"airline": "TAP", "callsign": "TAP222", "route": "Lisbon (LPPT) ➡️ Boston (KBOS)", "duration": "7h"},
+    {"airline": "TAP", "callsign": "TAP208", "route": "Lisbon (LPPT) ➡️ Newark (KEWR)", "duration": "7h30m"},
+    {"airline": "TAP", "callsign": "TAP1446", "route": "Lisbon (LPPT) ➡️ Brussels (EBBR)", "duration": "2h35m"},
+    {"airline": "TAP", "callsign": "TAP1936", "route": "Lisbon (LPPT) ➡️ Geneva (LSGG)", "duration": "2h25m"},
+    {"airline": "TAP", "callsign": "TAP1520", "route": "Porto (LPPR) ➡️ Amsterdam (EHAM)", "duration": "2h30m"},
+    {"airline": "TAP", "callsign": "TAP412", "route": "Lisbon (LPPT) ➡️ Porto (LPPR)", "duration": "55m"},
+    {"airline": "TAP", "callsign": "TAP562", "route": "Lisbon (LPPT) ➡️ Praia (GVNP)", "duration": "4h"},
+    {"airline": "TAP", "callsign": "TAP558", "route": "Lisbon (LPPT) ➡️ Paris (LFPG)", "duration": "2h20m"},
+    {"airline": "TAP", "callsign": "TAP931", "route": "Lisbon (LPPT) ➡️ London Heathrow (EGLL)", "duration": "2h40m"},
+    {"airline": "TAP", "callsign": "TAP1522", "route": "Porto (LPPR) ➡️ Frankfurt (EDDF)", "duration": "2h40m"},
+
+    # EasyJet (15 routes)
+    {"airline": "EasyJet", "callsign": "EZY801", "route": "London Gatwick (EGKK) ➡️ Berlin (EDDB)", "duration": "1h55m"},
+    {"airline": "EasyJet", "callsign": "EZY802", "route": "London Gatwick (EGKK) ➡️ Amsterdam (EHAM)", "duration": "1h10m"},
+    {"airline": "EasyJet", "callsign": "EZY711", "route": "London Luton (EGGW) ➡️ Budapest (LHBP)", "duration": "2h30m"},
+    {"airline": "EasyJet", "callsign": "EZY115", "route": "Paris Orly (LFPO) ➡️ Lisbon (LPPT)", "duration": "2h50m"},
+    {"airline": "EasyJet", "callsign": "EZY503", "route": "Paris Orly (LFPO) ➡️ Nice (LFMN)", "duration": "1h25m"},
+    {"airline": "EasyJet", "callsign": "EZY332", "route": "London Gatwick (EGKK) ➡️ Naples (LIRN)", "duration": "2h10m"},
+    {"airline": "EasyJet", "callsign": "EZY607", "route": "London Luton (EGGW) ➡️ Faro (LPFR)", "duration": "3h10m"},
+    {"airline": "EasyJet", "callsign": "EZY2105", "route": "Milan Malpensa (LIMC) ➡️ Lisbon (LPPT)", "duration": "2h45m"},
+    {"airline": "EasyJet", "callsign": "EZY402", "route": "Manchester (EGCC) ➡️ Geneva (LSGG)", "duration": "1h55m"},
+    {"airline": "EasyJet", "callsign": "EZY452", "route": "Bristol (EGGD) ➡️ Rome (LIRF)", "duration": "2h45m"},
+    {"airline": "EasyJet", "callsign": "EZY704", "route": "Edinburgh (EGPH) ➡️ Geneva (LSGG)", "duration": "2h05m"},
+    {"airline": "EasyJet", "callsign": "EZY8403", "route": "London Gatwick (EGKK) ➡️ Zurich (LSZH)", "duration": "1h40m"},
+    {"airline": "EasyJet", "callsign": "EZY3321", "route": "London Luton (EGGW) ➡️ Amsterdam (EHAM)", "duration": "1h15m"},
+    {"airline": "EasyJet", "callsign": "EZY908", "route": "Basel (LFSB) ➡️ Palma de Mallorca (LEPA)", "duration": "2h10m"},
+    {"airline": "EasyJet", "callsign": "EZY2100", "route": "London Luton (EGGW) ➡️ Paris Orly (LFPO)", "duration": "1h20m"},
+
+    # Ryanair (15 routes)
+    {"airline": "Ryanair", "callsign": "RYR1234", "route": "Dublin (EIDW) ➡️ Milan Bergamo (LIME)", "duration": "2h10m"},
+    {"airline": "Ryanair", "callsign": "RYR2456", "route": "Berlin Brandenburg (EDDB) ➡️ Rome Ciampino (LIRA)", "duration": "2h05m"},
+    {"airline": "Ryanair", "callsign": "RYR4758", "route": "Vienna (LOWW) ➡️ Athens (LGAV)", "duration": "2h15m"},
+    {"airline": "Ryanair", "callsign": "RYR6104", "route": "Lisbon (LPPT) ➡️ Brussels Charleroi (EBCI)", "duration": "2h50m"},
+    {"airline": "Ryanair", "callsign": "RYR8316", "route": "Madrid (LEMD) ➡️ Dublin (EIDW)", "duration": "2h20m"},
+    {"airline": "Ryanair", "callsign": "RYR3310", "route": "London Stansted (EGSS) ➡️ Barcelona (LEBL)", "duration": "2h10m"},
+    {"airline": "Ryanair", "callsign": "RYR4112", "route": "Manchester (EGCC) ➡️ Madrid (LEMD)", "duration": "2h30m"},
+    {"airline": "Ryanair", "callsign": "RYR1008", "route": "Munich (EDDM) ➡️ Malta (LMML)", "duration": "2h25m"},
+    {"airline": "Ryanair", "callsign": "RYR1190", "route": "Dublin (EIDW) ➡️ Frankfurt (EDDF)", "duration": "1h50m"},
+    {"airline": "Ryanair", "callsign": "RYR2102", "route": "Naples (LIRN) ➡️ Barcelona (LEBL)", "duration": "1h40m"},
+    {"airline": "Ryanair", "callsign": "RYR1235", "route": "Dublin (EIDW) ➡️ London Stansted (EGSS)", "duration": "1h15m"},
+    {"airline": "Ryanair", "callsign": "RYR5230", "route": "Dublin (EIDW) ➡️ Amsterdam (EHAM)", "duration": "1h55m"},
+    {"airline": "Ryanair", "callsign": "RYR7452", "route": "Edinburgh (EGPH) ➡️ London Stansted (EGSS)", "duration": "1h20m"},
+    {"airline": "Ryanair", "callsign": "RYR9022", "route": "Stockholm Skavsta (ESKN) ➡️ Copenhagen (EKCH)", "duration": "1h05m"},
+    {"airline": "Ryanair", "callsign": "RYR2788", "route": "Warsaw Modlin (EPMO) ➡️ Dublin (EIDW)", "duration": "2h55m"},
+
+    # Emirates (15 routes)
+    {"airline": "Emirates", "callsign": "UAE25", "route": "Dubai (OMDB) ➡️ London Heathrow (EGLL)", "duration": "7h30m"},
+    {"airline": "Emirates", "callsign": "UAE26", "route": "London Heathrow (EGLL) ➡️ Dubai (OMDB)", "duration": "7h15m"},
+    {"airline": "Emirates", "callsign": "UAE203", "route": "Dubai (OMDB) ➡️ New York JFK (KJFK)", "duration": "14h0m"},
+    {"airline": "Emirates", "callsign": "UAE204", "route": "New York JFK (KJFK) ➡️ Dubai (OMDB)", "duration": "13h50m"},
+    {"airline": "Emirates", "callsign": "UAE215", "route": "Dubai (OMDB) ➡️ Los Angeles (KLAX)", "duration": "16h0m"},
+    {"airline": "Emirates", "callsign": "UAE412", "route": "Dubai (OMDB) ➡️ Sydney (YSSY)", "duration": "14h30m"},
+    {"airline": "Emirates", "callsign": "UAE413", "route": "Sydney (YSSY) ➡️ Dubai (OMDB)", "duration": "14h15m"},
+    {"airline": "Emirates", "callsign": "UAE354", "route": "Dubai (OMDB) ➡️ Singapore (WSSS)", "duration": "7h10m"},
+    {"airline": "Emirates", "callsign": "UAE355", "route": "Singapore (WSSS) ➡️ Dubai (OMDB)", "duration": "7h0m"},
+    {"airline": "Emirates", "callsign": "UAE49", "route": "Dubai (OMDB) ➡️ Frankfurt (EDDF)", "duration": "6h45m"},
+    {"airline": "Emirates", "callsign": "UAE50", "route": "Frankfurt (EDDF) ➡️ Dubai (OMDB)", "duration": "6h30m"},
+    {"airline": "Emirates", "callsign": "UAE763", "route": "Dubai (OMDB) ➡️ Johannesburg (FAOR)", "duration": "8h0m"},
+    {"airline": "Emirates", "callsign": "UAE764", "route": "Johannesburg (FAOR) ➡️ Dubai (OMDB)", "duration": "8h10m"},
+    {"airline": "Emirates", "callsign": "UAE318", "route": "Dubai (OMDB) ➡️ Tokyo Haneda (RJTT)", "duration": "9h0m"},
+    {"airline": "Emirates", "callsign": "UAE319", "route": "Tokyo Haneda (RJTT) ➡️ Dubai (OMDB)", "duration": "9h10m"},
+
+    # Eurowings (15 routes, mix of one-way + some return flights)
+    {"airline": "Eurowings", "callsign": "EWG12", "route": "Cologne (EDDK) ➡️ Berlin Brandenburg (EDDB)", "duration": "1h10m"},
+    {"airline": "Eurowings", "callsign": "EWG45", "route": "Düsseldorf (EDDL) ➡️ Vienna (LOWW)", "duration": "1h35m"},
+    {"airline": "Eurowings", "callsign": "EWG84", "route": "Hamburg (EDDH) ➡️ Munich (EDDM)", "duration": "1h10m"},
+    {"airline": "Eurowings", "callsign": "EWG152", "route": "Stuttgart (EDDS) ➡️ Palma de Mallorca (LEPA)", "duration": "2h05m"},
+    {"airline": "Eurowings", "callsign": "EWG153", "route": "Palma de Mallorca (LEPA) ➡️ Stuttgart (EDDS)", "duration": "2h05m"},  # return
+    {"airline": "Eurowings", "callsign": "EWG203", "route": "Cologne (EDDK) ➡️ Barcelona (LEBL)", "duration": "2h15m"},
+    {"airline": "Eurowings", "callsign": "EWG266", "route": "Hamburg (EDDH) ➡️ Rome Fiumicino (LIRF)", "duration": "2h20m"},
+    {"airline": "Eurowings", "callsign": "EWG311", "route": "Düsseldorf (EDDL) ➡️ Athens (LGAV)", "duration": "3h00m"},
+    {"airline": "Eurowings", "callsign": "EWG334", "route": "Stuttgart (EDDS) ➡️ Lisbon (LPPT)", "duration": "3h00m"},
+    {"airline": "Eurowings", "callsign": "EWG335", "route": "Lisbon (LPPT) ➡️ Stuttgart (EDDS)", "duration": "3h00m"},  # return
+    {"airline": "Eurowings", "callsign": "EWG402", "route": "Cologne (EDDK) ➡️ Prague (LKPR)", "duration": "1h20m"},
+    {"airline": "Eurowings", "callsign": "EWG431", "route": "Hamburg (EDDH) ➡️ London Heathrow (EGLL)", "duration": "1h45m"},
+    {"airline": "Eurowings", "callsign": "EWG520", "route": "Düsseldorf (EDDL) ➡️ Zurich (LSZH)", "duration": "1h10m"},
+    {"airline": "Eurowings", "callsign": "EWG855", "route": "Hamburg (EDDH) ➡️ Malaga (LEMG)", "duration": "3h00m"},
+    {"airline": "Eurowings", "callsign": "EWG920", "route": "Düsseldorf (EDDL) ➡️ Tenerife South (GCTS)", "duration": "4h40m"},
+
+    # KLM (15 routes)
+    {"airline": "KLM", "callsign": "KLM101", "route": "Amsterdam (EHAM) ➡️ London Heathrow (EGLL)", "duration": "1h05m"},
+    {"airline": "KLM", "callsign": "KLM735", "route": "Amsterdam (EHAM) ➡️ Frankfurt (EDDF)", "duration": "1h00m"},
+    {"airline": "KLM", "callsign": "KLM1363", "route": "Amsterdam (EHAM) ➡️ Paris Charles de Gaulle (LFPG)", "duration": "1h15m"},
+    {"airline": "KLM", "callsign": "KLM857", "route": "Amsterdam (EHAM) ➡️ Madrid (LEMD)", "duration": "2h25m"},
+    {"airline": "KLM", "callsign": "KLM1691", "route": "Amsterdam (EHAM) ➡️ Rome Fiumicino (LIRF)", "duration": "2h15m"},
+    {"airline": "KLM", "callsign": "KLM933", "route": "Amsterdam (EHAM) ➡️ Stockholm Arlanda (ESSA)", "duration": "1h55m"},
+    {"airline": "KLM", "callsign": "KLM601", "route": "Amsterdam (EHAM) ➡️ Warsaw (EPWA)", "duration": "1h50m"},
+    {"airline": "KLM", "callsign": "KLM641", "route": "Amsterdam (EHAM) ➡️ Budapest (LHBP)", "duration": "1h55m"},
+    {"airline": "KLM", "callsign": "KLM1507", "route": "Amsterdam (EHAM) ➡️ Lisbon (LPPT)", "duration": "2h50m"},
+    {"airline": "KLM", "callsign": "KLM785", "route": "Amsterdam (EHAM) ➡️ Helsinki (EFHK)", "duration": "2h20m"},
+    {"airline": "KLM", "callsign": "KLM2043", "route": "Amsterdam (EHAM) ➡️ Istanbul (LTFM)", "duration": "3h25m"},
+    {"airline": "KLM", "callsign": "KLM6011", "route": "Amsterdam (EHAM) ➡️ New York JFK (KJFK)", "duration": "8h05m"},
+    {"airline": "KLM", "callsign": "KLM589", "route": "Amsterdam (EHAM) ➡️ Dubai (OMDB)", "duration": "6h30m"},
+    {"airline": "KLM", "callsign": "KLM887", "route": "Amsterdam (EHAM) ➡️ Tokyo Narita (RJAA)", "duration": "11h20m"},
+    {"airline": "KLM", "callsign": "KLM563", "route": "Amsterdam (EHAM) ➡️ São Paulo Guarulhos (SBGR)", "duration": "11h40m"},
+
+    # Condor (15 routes)
+    {"airline": "Condor", "callsign": "CFG2256", "route": "Frankfurt (EDDF) ➡️ Punta Cana (MDPC)", "duration": "10h30m"},
+    {"airline": "Condor", "callsign": "CFG2578", "route": "Frankfurt (EDDF) ➡️ Phuket (VTSP)", "duration": "11h15m"},
+    {"airline": "Condor", "callsign": "CFG2314", "route": "Frankfurt (EDDF) ➡️ Male (VRMM)", "duration": "9h45m"},
+    {"airline": "Condor", "callsign": "CFG2112", "route": "Frankfurt (EDDF) ➡️ Las Vegas (KLAS)", "duration": "11h30m"},
+    {"airline": "Condor", "callsign": "CFG2450", "route": "Frankfurt (EDDF) ➡️ Windhoek (FYWH)", "duration": "10h15m"},
+    {"airline": "Condor", "callsign": "CFG1854", "route": "Munich (EDDM) ➡️ Cancun (MMUN)", "duration": "12h00m"},
+    {"airline": "Condor", "callsign": "CFG2076", "route": "Munich (EDDM) ➡️ Seattle (KSEA)", "duration": "11h00m"},
+    {"airline": "Condor", "callsign": "CFG2789", "route": "Munich (EDDM) ➡️ Mauritius (FIMP)", "duration": "11h30m"},
+    {"airline": "Condor", "callsign": "CFG1923", "route": "Frankfurt (EDDF) ➡️ Whitehorse (CYXY)", "duration": "9h45m"},
+    {"airline": "Condor", "callsign": "CFG2156", "route": "Frankfurt (EDDF) ➡️ Anchorage (PANC)", "duration": "10h15m"},
+    {"airline": "Condor", "callsign": "CFG1789", "route": "Frankfurt (EDDF) ➡️ Vancouver (CYVR)", "duration": "10h00m"},
+    {"airline": "Condor", "callsign": "CFG2341", "route": "Munich (EDDM) ➡️ Denver (KDEN)", "duration": "11h15m"},
+    {"airline": "Condor", "callsign": "CFG1987", "route": "Frankfurt (EDDF) ➡️ San Diego (KSAN)", "duration": "12h15m"},
+    {"airline": "Condor", "callsign": "CFG2233", "route": "Munich (EDDM) ➡️ Portland (KPDX)", "duration": "11h30m"},
+    {"airline": "Condor", "callsign": "CFG2654", "route": "Frankfurt (EDDF) ➡️ Halifax (CYHZ)", "duration": "7h30m"}
 ]
 
 # ----- Persistent Data -----
@@ -356,3 +490,4 @@ async def on_ready():
 if __name__ == "__main__":
     threading.Thread(target=run_webserver, daemon=True).start()
     bot.run(TOKEN)
+
