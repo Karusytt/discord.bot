@@ -51,7 +51,8 @@ ROLE_NAMES = {
     "Emirates": "Emirates Pilot",
     "Eurowings": "Eurowings Pilot",
     "KLM": "KLM Pilot",
-    "Condor": "Condor Pilot"
+    "Condor": "Condor Pilot",
+    "WizzAir": "WizzAir Pilot"
 }
 
 AIRLINE_COLORS = {
@@ -62,7 +63,8 @@ AIRLINE_COLORS = {
     "Emirates": discord.Color.purple(),
     "Eurowings": discord.Color.from_str("#8F174F"),
     "KLM": discord.Color.from_str("#0052A1"),
-    "Condor": discord.Color.from_str("#FFCC00")
+    "Condor": discord.Color.from_str("#FFCC00"),
+    "WizzAir": discord.Color.from_str("#7B1FA2")
 }
 
 AIRCRAFTS = {
@@ -73,7 +75,8 @@ AIRCRAFTS = {
     "Emirates": {"short": [], "long": ["B777-300ER", "A380", "B787-9", "A350-900"]},
     "Eurowings": {"short": ["A319", "A320", "A321"], "long": []},
     "KLM": {"short": ["E175", "E190", "E195", "B737-700", "B737-800", "B737-900"], "long": ["B777-200", "B777-300", "B787-9", "B787-10", "A330-200", "A330-300"]},
-    "Condor": {"short": ["A320", "A321"], "long": ["A330-900", "B767-300", "B757-300"]}
+    "Condor": {"short": ["A320", "A321"], "long": ["A330-900", "B767-300", "B757-300"]},
+    "WizzAir": {"short": ["A320", "A321", "A321neo"], "long": []}
 }
 
 PHONETIC_LETTERS = list("ABCDEFGHJKLMNPQRSTUVWXYZ")  # exclude I/O
@@ -87,7 +90,7 @@ def maybe_add_phonetic_suffix(callsign):
 
 # ----- Contracts -----
 contracts = [
-  # Lufthansa (15 routes)
+    # Lufthansa (15 routes)
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
     {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
     {"airline": "Lufthansa", "callsign": "DLH456", "route": "Frankfurt (EDDF) ➡️ Singapore (WSSS)", "duration": "12h30m"},
@@ -222,6 +225,23 @@ contracts = [
     {"airline": "Condor", "callsign": "CFG1987", "route": "Frankfurt (EDDF) ➡️ San Diego (KSAN)", "duration": "12h15m"},
     {"airline": "Condor", "callsign": "CFG2233", "route": "Munich (EDDM) ➡️ Portland (KPDX)", "duration": "11h30m"},
     {"airline": "Condor", "callsign": "CFG2654", "route": "Frankfurt (EDDF) ➡️ Halifax (CYHZ)", "duration": "7h30m"}
+
+    # Wizz Air (15 routes)
+    {"airline": "WizzAir", "callsign": "WZZ2351", "route": "Budapest (LHBP) ➡️ London Luton (EGGW)", "duration": "2h40m"},
+    {"airline": "WizzAir", "callsign": "WZZ1256", "route": "Warsaw Chopin (EPWA) ➡️ Paris Beauvais (LFOB)", "duration": "2h30m"},
+    {"airline": "WizzAir", "callsign": "WZZ3189", "route": "Bucharest Otopeni (LROP) ➡️ Rome Ciampino (LIRA)", "duration": "2h10m"},
+    {"airline": "WizzAir", "callsign": "WZZ4157", "route": "Katowice (EPKT) ➡️ Dortmund (EDLW)", "duration": "1h50m"},
+    {"airline": "WizzAir", "callsign": "WZZ2374", "route": "Sofia (LBSF) ➡️ Barcelona El Prat (LEBL)", "duration": "3h05m"},
+    {"airline": "WizzAir", "callsign": "WZZ3421", "route": "Debrecen (LHDC) ➡️ Milan Bergamo (LIME)", "duration": "1h55m"},
+    {"airline": "WizzAir", "callsign": "WZZ1985", "route": "Gdansk (EPGD) ➡️ Oslo Torp (ENTO)", "duration": "1h40m"},
+    {"airline": "WizzAir", "callsign": "WZZ2763", "route": "Vienna (LOWW) ➡️ Tel Aviv (LLBG)", "duration": "3h20m"},
+    {"airline": "WizzAir", "callsign": "WZZ4098", "route": "Cluj-Napoca (LRCL) ➡️ Brussels Charleroi (EBCI)", "duration": "2h50m"},
+    {"airline": "WizzAir", "callsign": "WZZ1520", "route": "Belgrade (LYBE) ➡️ Memmingen (EDJA)", "duration": "1h45m"},
+    {"airline": "WizzAir", "callsign": "WZZ3356", "route": "Larnaca (LCLK) ➡️ Prague (LKPR)", "duration": "3h15m"},
+    {"airline": "WizzAir", "callsign": "WZZ1872", "route": "Tirana (LATI) ➡️ Budapest (LHBP)", "duration": "1h30m"},
+    {"airline": "WizzAir", "callsign": "WZZ2943", "route": "Skopje (LWSK) ➡️ Hamburg (EDDH)", "duration": "2h25m"},
+    {"airline": "WizzAir", "callsign": "WZZ4015", "route": "Kutaisi (UGKO) ➡️ Warsaw Modlin (EPMO)", "duration": "3h10m"},
+    {"airline": "WizzAir", "callsign": "WZZ3789", "route": "Kyiv (UKKK) ➡️ Dortmund (EDLW)", "duration": "2h35m"}
 ]
 
 # ----- Persistent Data -----
@@ -365,7 +385,8 @@ class AcceptButton(discord.ui.View):
                 "Emirates": "UAE",
                 "Eurowings": "EWG",
                 "KLM": "KLM",
-                "Condor": "CFG"
+                "Condor": "CFG",
+                "WizzAir": "WZZ"
             }
             
             airline_code = airline_codes.get(self.contract["airline"], "")
@@ -490,4 +511,3 @@ async def on_ready():
 if __name__ == "__main__":
     threading.Thread(target=run_webserver, daemon=True).start()
     bot.run(TOKEN)
-
