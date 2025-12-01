@@ -6,8 +6,10 @@ import json
 import threading
 from dotenv import load_dotenv
 
-import discord
-from discord.ext import tasks, commands
+# Try to import discord and handle ImportError properly
+try:
+    import discord
+    from discord.ext import tasks, commands
 except ImportError:
     print("❌ discord.py not installed. Install with: pip install discord.py")
     exit(1)
@@ -529,4 +531,5 @@ if __name__ == "__main__":
     
     # Start Discord bot in main thread
     start_bot()
+
 
