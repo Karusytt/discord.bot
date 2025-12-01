@@ -3,9 +3,12 @@ import random
 import asyncio
 import time
 import json
+import threading
 from dotenv import load_dotenv
 import discord
 from discord.ext import tasks, commands
+from fastapi import FastAPI
+import uvicorn
 
 # Load environment variables
 load_dotenv()
@@ -14,12 +17,28 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", 0))
 GUILD_ID = int(os.getenv("GUILD_ID", 0))
 COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 2 * 60 * 60))
+PORT = int(os.getenv("PORT", 8080))
 
 if not TOKEN or CHANNEL_ID == 0 or GUILD_ID == 0:
     print("❌ ERROR: Missing environment variables")
     exit(1)
 
-# Discord setup
+# ----- FastAPI Web Server (for Uptime Robot) -----
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"status": "Bot is running!"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "timestamp": time.time()}
+
+def run_webserver():
+    """Run the FastAPI web server"""
+    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="info")
+
+# ----- Discord Setup -----
 intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
@@ -227,7 +246,7 @@ contracts = [
     {"airline": "WizzAir", "callsign": "WZZ2943", "route": "Skopje (LWSK) ➡️ Hamburg (EDDH)", "duration": "2h25m"},
     {"airline": "WizzAir", "callsign": "WZZ4015", "route": "Kutaisi (UGKO) ➡️ Warsaw Modlin (EPMO)", "duration": "3h10m"},
     {"airline": "WizzAir", "callsign": "WZZ3789", "route": "Kyiv (UKKK) ➡️ Dortmund (EDLW)", "duration": "2h35m"}
-]
+]  # PASTE YOUR CONTRACTS HERE
 
 # ----- Persistent Data -----
 locked_contracts = {}
@@ -481,5 +500,22 @@ async def on_ready():
     await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
     print("✅ Commands synced successfully!")
 
-# ----- Run Bot -----
-bot.run(TOKEN)
+# ----- Start Everything -----
+def start_bot():
+    """Start the Discord bot"""
+    bot.run(TOKEN)
+
+def start_webserver():
+    """Start the FastAPI web server"""
+    run_webserver()
+
+if __name__ == "__main__":
+    print("🚀 Starting Flight Dispatcher Bot...")
+    print(f"🌐 Web server will run on port {PORT}")
+    
+    # Start web server in a thread
+    web_thread = threading.Thread(target=start_webserver, daemon=True)
+    web_thread.start()
+    
+    # Start Discord bot in main thread
+    start_bot()
