@@ -4,6 +4,7 @@ import asyncio
 import time
 import json
 import threading
+import aiohttp
 from dotenv import load_dotenv
 
 import discord
@@ -18,6 +19,8 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", 0))
 GUILD_ID = int(os.getenv("GUILD_ID", 0))
 COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 2 * 60 * 60))  # 2 hours default
+AVIATIONWEATHER_API_KEY = os.getenv("AVIATIONWEATHER_API_KEY", "")  # Optional API key
+CHECKWX_API_KEY = os.getenv("CHECKWX_API_KEY", "")  # Alternative API key
 
 if not TOKEN or CHANNEL_ID == 0 or GUILD_ID == 0:
     print("❌ ERROR: Missing environment variables (DISCORD_TOKEN / CHANNEL_ID / GUILD_ID)")
@@ -80,6 +83,168 @@ AIRCRAFTS = {
 }
 
 PHONETIC_LETTERS = list("ABCDEFGHJKLMNPQRSTUVWXYZ")  # exclude I/O
+
+# ----- Weather API Functions -----
+class WeatherFetcher:
+    def __init__(self):
+        self.cache = {}
+        self.cache_duration = 1800  # 30 minutes cache
+        self.session = None
+        
+    async def get_session(self):
+        if self.session is None or self.session.closed:
+            self.session = aiohttp.ClientSession()
+        return self.session
+    
+    def parse_metar(self, metar_text):
+        """Parse METAR text into readable weather"""
+        if not metar_text:
+            return "METAR data unavailable"
+        
+        # Simple METAR parsing
+        lines = metar_text.split('\n')
+        for line in lines:
+            if line.startswith('METAR'):
+                parts = line.split()
+                # Look for temperature (format: XX/XX)
+                for part in parts:
+                    if '/' in part and part[0].isdigit():
+                        temp_parts = part.split('/')
+                        temp_c = temp_parts[0]
+                        # Convert to Celsius if needed
+                        return f"Temp: {temp_c}°C"
+        
+        return "Weather data available"
+    
+    async def fetch_metar_aviationweather(self, icao):
+        """Fetch METAR from aviationweather.gov API"""
+        try:
+            session = await self.get_session()
+            url = f"https://aviationweather.gov/api/data/metar?ids={icao}&format=raw"
+            async with session.get(url, timeout=10) as response:
+                if response.status == 200:
+                    metar = await response.text()
+                    if metar and "No METAR" not in metar:
+                        return metar.strip()
+        except Exception as e:
+            print(f"Error fetching METAR for {icao}: {e}")
+        return None
+    
+    async def fetch_metar_checkwx(self, icao):
+        """Fetch METAR from checkwx API (requires API key)"""
+        if not CHECKWX_API_KEY:
+            return None
+            
+        try:
+            session = await self.get_session()
+            url = f"https://api.checkwx.com/metar/{icao}/decoded"
+            headers = {"X-API-Key": CHECKWX_API_KEY}
+            async with session.get(url, headers=headers, timeout=10) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    if data.get('results') > 0:
+                        metar = data['data'][0]
+                        # Extract relevant info
+                        temp_c = metar.get('temperature', {}).get('celsius', 'N/A')
+                        wind = metar.get('wind', {})
+                        wind_speed = wind.get('speed_kts', 'N/A')
+                        wind_dir = wind.get('degrees', 'N/A')
+                        conditions = metar.get('conditions', [])
+                        cond_text = ', '.join(conditions) if conditions else 'Clear'
+                        
+                        return f"{cond_text}, {temp_c}°C, Wind {wind_dir}°/{wind_speed}kt"
+        except Exception as e:
+            print(f"Error fetching from checkwx for {icao}: {e}")
+        return None
+    
+    async def fetch_metar_fallback(self, icao):
+        """Fetch from public fallback sources"""
+        try:
+            session = await self.get_session()
+            # Try multiple public sources
+            sources = [
+                f"https://tgftp.nws.noaa.gov/data/observations/metar/stations/{icao}.TXT",
+                f"https://metar.vatsim.net/{icao}",
+            ]
+            
+            for url in sources:
+                try:
+                    async with session.get(url, timeout=5) as response:
+                        if response.status == 200:
+                            text = await response.text()
+                            if text:
+                                return text.strip()
+                except:
+                    continue
+        except Exception as e:
+            print(f"Error in fallback fetch for {icao}: {e}")
+        return None
+    
+    async def get_weather_for_icao(self, icao):
+        """Get weather for an ICAO code with caching"""
+        # Check cache
+        cache_key = icao.upper()
+        if cache_key in self.cache:
+            cached_data, timestamp = self.cache[cache_key]
+            if time.time() - timestamp < self.cache_duration:
+                return cached_data
+        
+        # Try APIs in order
+        weather = None
+        
+        # First try checkwx if API key available
+        if CHECKWX_API_KEY:
+            weather = await self.fetch_metar_checkwx(cache_key)
+        
+        # Then try aviationweather.gov
+        if not weather:
+            metar = await self.fetch_metar_aviationweather(cache_key)
+            if metar:
+                weather = self.parse_metar(metar)
+        
+        # Finally try fallback
+        if not weather:
+            metar = await self.fetch_metar_fallback(cache_key)
+            if metar:
+                weather = self.parse_metar(metar)
+        
+        # If still no weather, provide generic info
+        if not weather:
+            weather = "Weather data temporarily unavailable"
+        
+        # Cache the result
+        self.cache[cache_key] = (weather, time.time())
+        return weather
+    
+    async def close(self):
+        if self.session:
+            await self.session.close()
+
+weather_fetcher = WeatherFetcher()
+
+def extract_icao_from_route(route):
+    """Extract ICAO codes from route string"""
+    icao_codes = []
+    
+    # Try to find patterns like (EDDF) or EDDF
+    import re
+    
+    # Look for ICAO codes in parentheses
+    pattern1 = r'\(([A-Z]{4})\)'
+    matches1 = re.findall(pattern1, route)
+    
+    # Look for standalone ICAO codes (4 letters)
+    pattern2 = r'\b([A-Z]{4})\b'
+    matches2 = re.findall(pattern2, route)
+    
+    # Combine and deduplicate
+    all_matches = matches1 + matches2
+    icao_codes = list(dict.fromkeys(all_matches))  # Remove duplicates
+    
+    # Filter to ensure valid ICAO codes (4 letters)
+    icao_codes = [code for code in icao_codes if len(code) == 4 and code.isalpha()]
+    
+    return icao_codes
 
 def maybe_add_phonetic_suffix(callsign):
     """Randomly add 1-2 phonetic letters to a callsign (30% chance)."""
@@ -224,8 +389,8 @@ contracts = [
     {"airline": "Condor", "callsign": "CFG2341", "route": "Munich (EDDM) ➡️ Denver (KDEN)", "duration": "11h15m"},
     {"airline": "Condor", "callsign": "CFG1987", "route": "Frankfurt (EDDF) ➡️ San Diego (KSAN)", "duration": "12h15m"},
     {"airline": "Condor", "callsign": "CFG2233", "route": "Munich (EDDM) ➡️ Portland (KPDX)", "duration": "11h30m"},
-    {"airline": "Condor", "callsign": "CFG2654", "route": "Frankfurt (EDDF) ➡️ Halifax (CYHZ)", "duration": "7h30m"}
-
+    {"airline": "Condor", "callsign": "CFG2654", "route": "Frankfurt (EDDF) ➡️ Halifax (CYHZ)", "duration": "7h30m"},
+    
     # Wizz Air (15 routes)
     {"airline": "WizzAir", "callsign": "WZZ2351", "route": "Budapest (LHBP) ➡️ London Luton (EGGW)", "duration": "2h40m"},
     {"airline": "WizzAir", "callsign": "WZZ1256", "route": "Warsaw Chopin (EPWA) ➡️ Paris Beauvais (LFOB)", "duration": "2h30m"},
@@ -303,11 +468,21 @@ def assign_aircraft(contract):
         # prefer long-haul fleet, fallback to short if none
         return random.choice(longs) if longs else (random.choice(shorts) if shorts else "Unknown")
 
-def build_contract_embed(contract, status="available", user=None):
+async def build_contract_embed(contract, status="available", user=None):
     airline = contract["airline"]
     color = AIRLINE_COLORS.get(airline, discord.Color.blue())
     aircraft = contract.get("assigned_aircraft") or assign_aircraft(contract)
     callsign = contract.get("display_callsign", contract["callsign"])
+    
+    # Extract and fetch weather for airports in the route
+    icao_codes = extract_icao_from_route(contract["route"])
+    weather_info = []
+    
+    for icao in icao_codes[:2]:  # Limit to first 2 airports
+        weather = await weather_fetcher.get_weather_for_icao(icao)
+        weather_info.append(f"{icao}: {weather}")
+    
+    weather_text = "\n".join(weather_info) if weather_info else "Weather data unavailable"
 
     if status == "expired":
         title = "❌ Contract Expired"
@@ -325,6 +500,7 @@ def build_contract_embed(contract, status="available", user=None):
     embed.add_field(name="🏢 Airline", value=airline, inline=True)
     embed.add_field(name="🔢 Callsign", value=f"`{callsign}`", inline=True)
     embed.add_field(name="🗺️ Route", value=contract["route"], inline=False)
+    embed.add_field(name="🌤️ Weather", value=weather_text, inline=False)
     embed.add_field(name="⏱️ Duration", value=f"`{contract['duration']}`", inline=True)
     embed.add_field(name="🛫 Aircraft", value=aircraft, inline=True)
     embed.set_footer(text=footer)
@@ -364,7 +540,7 @@ class AcceptButton(discord.ui.View):
         pilot_logs.setdefault(user_id, []).append(entry)
         save_logs()
 
-        embed = build_contract_embed(self.contract, "accepted", user)
+        embed = await build_contract_embed(self.contract, "accepted", user)
         await interaction.message.edit(embed=embed, view=None)
 
         # ----- Enhanced DM with pre-filled SimBrief -----
@@ -401,6 +577,15 @@ class AcceptButton(discord.ui.View):
             simbrief_url = "https://dispatch.simbrief.com/options/new"
 
         aircraft = self.contract.get("assigned_aircraft") or assign_aircraft(self.contract)
+        
+        # Get weather for DM as well
+        icao_codes = extract_icao_from_route(self.contract["route"])
+        weather_info = []
+        for icao in icao_codes[:2]:
+            weather = await weather_fetcher.get_weather_for_icao(icao)
+            weather_info.append(f"{icao}: {weather}")
+        weather_text = "\n".join(weather_info) if weather_info else "Weather data unavailable"
+        
         embed_dm = discord.Embed(
             title=f"✈️ Contract Accepted: **{self.contract['callsign']}**",
             color=discord.Color.green()
@@ -408,6 +593,7 @@ class AcceptButton(discord.ui.View):
         embed_dm.add_field(name="🏢 Airline", value=f"**{self.contract['airline']}**", inline=False)
         embed_dm.add_field(name="🔢 Callsign", value=f"**{self.contract.get('display_callsign', self.contract['callsign'])}**", inline=True)
         embed_dm.add_field(name="🗺️ Route", value=f"**{self.contract['route']}**", inline=False)
+        embed_dm.add_field(name="🌤️ Weather", value=f"**{weather_text}**", inline=False)
         embed_dm.add_field(name="⏱️ Duration", value=f"**{self.contract['duration']}**", inline=True)
         embed_dm.add_field(name="🛫 Aircraft", value=f"**{aircraft}**", inline=True)
         embed_dm.add_field(
@@ -436,7 +622,7 @@ async def handle_contract_expiration(message_id, channel):
     if data["accepted_by"] is None:
         try:
             message = await channel.fetch_message(message_id)
-            expired_embed = build_contract_embed(data["contract"], "expired")
+            expired_embed = await build_contract_embed(data["contract"], "expired")
             await message.edit(embed=expired_embed, view=None)
             print(f"Contract {message_id} expired.")
         except Exception as e:
@@ -460,7 +646,7 @@ async def send_contract_to_channel(channel, contract):
     role = discord.utils.get(guild.roles, name=ROLE_NAMES.get(contract["airline"]))
     role_mention = role.mention if role else ""
 
-    embed = build_contract_embed(contract)
+    embed = await build_contract_embed(contract)
     msg = await channel.send(content=role_mention, embed=embed, view=AcceptButton(contract))
     locked_contracts[msg.id] = {"contract": contract, "accepted_by": None}
     asyncio.create_task(handle_contract_expiration(msg.id, channel))
@@ -506,6 +692,10 @@ async def on_ready():
 
     await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
     print("✅ Commands synced successfully!")
+
+@bot.event
+async def on_disconnect():
+    await weather_fetcher.close()
 
 # ----- Run Bot + Webserver -----
 if __name__ == "__main__":
