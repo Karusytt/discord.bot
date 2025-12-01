@@ -5,8 +5,15 @@ import time
 import json
 import threading
 from dotenv import load_dotenv
-import discord
-from discord.ext import tasks, commands
+
+# Import discord WITHOUT voice support to avoid audioop error
+try:
+    import discord
+    from discord.ext import tasks, commands
+except ImportError:
+    print("❌ discord.py not installed. Install with: pip install discord.py")
+    exit(1)
+
 from fastapi import FastAPI
 import uvicorn
 
@@ -23,7 +30,9 @@ if not TOKEN or CHANNEL_ID == 0 or GUILD_ID == 0:
     print("❌ ERROR: Missing environment variables")
     exit(1)
 
-# ----- FastAPI Web Server (for Uptime Robot) -----
+print("🚀 Starting Flight Dispatcher Bot...")
+
+# ----- FastAPI Web Server -----
 app = FastAPI()
 
 @app.get("/")
@@ -34,16 +43,17 @@ def read_root():
 def health_check():
     return {"status": "healthy", "timestamp": time.time()}
 
-def run_webserver():
-    """Run the FastAPI web server"""
-    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="info")
-
 # ----- Discord Setup -----
 intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
 intents.guilds = True
 intents.members = True
+
+# Disable voice intents to avoid audioop import
+intents.voice_states = False
+intents.typing = False
+intents.presences = False
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -93,7 +103,7 @@ def maybe_add_phonetic_suffix(callsign):
     return callsign
 
 # ----- Contracts -----
-contracts = [
+contracts = [ 
     # Lufthansa (15 routes)
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
     {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
@@ -501,21 +511,23 @@ async def on_ready():
     print("✅ Commands synced successfully!")
 
 # ----- Start Everything -----
+def run_webserver():
+    """Start FastAPI web server"""
+    print(f"🌐 Starting web server on port {PORT}...")
+    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")
+
 def start_bot():
-    """Start the Discord bot"""
+    """Start Discord bot"""
+    print("🤖 Starting Discord bot...")
     bot.run(TOKEN)
 
-def start_webserver():
-    """Start the FastAPI web server"""
-    run_webserver()
-
 if __name__ == "__main__":
-    print("🚀 Starting Flight Dispatcher Bot...")
-    print(f"🌐 Web server will run on port {PORT}")
-    
-    # Start web server in a thread
-    web_thread = threading.Thread(target=start_webserver, daemon=True)
+    # Start web server in background thread
+    web_thread = threading.Thread(target=run_webserver, daemon=True)
     web_thread.start()
+    
+    # Give web server a moment to start
+    time.sleep(1)
     
     # Start Discord bot in main thread
     start_bot()
