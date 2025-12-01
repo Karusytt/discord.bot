@@ -1,15 +1,17 @@
+# main.py
 import os
 import random
 import asyncio
 import time
 import json
 import threading
+import logging
 from dotenv import load_dotenv
 
 # Try to import discord and handle ImportError properly
 try:
     import discord
-    from discord.ext import tasks, commands
+    from discord.ext import commands
 except ImportError:
     print("❌ discord.py not installed. Install with: pip install discord.py")
     exit(1)
@@ -17,20 +19,32 @@ except ImportError:
 from fastapi import FastAPI
 import uvicorn
 
+# ------------- Logging ----------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
+log = logging.getLogger("flight-dispatcher")
+
 # Load environment variables
 load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
-CHANNEL_ID = int(os.getenv("CHANNEL_ID", 0))
-GUILD_ID = int(os.getenv("GUILD_ID", 0))
-COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 2 * 60 * 60))
-PORT = int(os.getenv("PORT", 8080))
-
-if not TOKEN or CHANNEL_ID == 0 or GUILD_ID == 0:
-    print("❌ ERROR: Missing environment variables")
+try:
+    CHANNEL_ID = int(os.getenv("CHANNEL_ID", "0"))
+    GUILD_ID = int(os.getenv("GUILD_ID", "0"))
+    COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", str(2 * 60 * 60)))
+    PORT = int(os.getenv("PORT", "8080"))
+except Exception as e:
+    log.error("Invalid integer in environment variables: %s", e)
     exit(1)
 
-print("🚀 Starting Flight Dispatcher Bot...")
+if not TOKEN or CHANNEL_ID == 0 or GUILD_ID == 0:
+    log.error("❌ ERROR: Missing environment variables. Make sure DISCORD_TOKEN, CHANNEL_ID, and GUILD_ID are set.")
+    log.error("Current values: TOKEN set? %s, CHANNEL_ID=%s, GUILD_ID=%s", bool(TOKEN), CHANNEL_ID, GUILD_ID)
+    exit(1)
+
+log.info("🚀 Starting Flight Dispatcher Bot...")
 
 # ----- FastAPI Web Server -----
 app = FastAPI()
@@ -45,12 +59,11 @@ def health_check():
 
 # ----- Discord Setup -----
 intents = discord.Intents.default()
-intents.messages = True
 intents.message_content = True
 intents.guilds = True
-intents.members = True
+intents.members = True  # NOTE: If you rely on member roles, enable "Server Members Intent" in the Developer Portal.
 
-# Disable voice intents to avoid audioop import
+# Disable voice/typing/presences to reduce imports and privileges
 intents.voice_states = False
 intents.typing = False
 intents.presences = False
@@ -82,6 +95,7 @@ AIRLINE_COLORS = {
     "WizzAir": discord.Color.from_str("#7B1FA2")
 }
 
+# (Keep your AIRCRAFTS and PHONETIC_LETTERS, same as before)
 AIRCRAFTS = {
     "Lufthansa": {"short": ["A319", "A320", "A321"], "long": ["A330", "A340", "A350", "B747", "B787"]},
     "TAP": {"short": ["A319", "A320"], "long": ["A330", "A321LR"]},
@@ -102,9 +116,9 @@ def maybe_add_phonetic_suffix(callsign):
         return callsign + letters
     return callsign
 
-# ----- Contracts -----
-contracts = [ 
-    # Lufthansa (15 routes)
+# ----- Contracts (unchanged - paste yours) -----
+contracts = [
+     # Lufthansa (15 routes)
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
     {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
     {"airline": "Lufthansa", "callsign": "DLH456", "route": "Frankfurt (EDDF) ➡️ Singapore (WSSS)", "duration": "12h30m"},
@@ -256,7 +270,7 @@ contracts = [
     {"airline": "WizzAir", "callsign": "WZZ2943", "route": "Skopje (LWSK) ➡️ Hamburg (EDDH)", "duration": "2h25m"},
     {"airline": "WizzAir", "callsign": "WZZ4015", "route": "Kutaisi (UGKO) ➡️ Warsaw Modlin (EPMO)", "duration": "3h10m"},
     {"airline": "WizzAir", "callsign": "WZZ3789", "route": "Kyiv (UKKK) ➡️ Dortmund (EDLW)", "duration": "2h35m"}
-]  # PASTE YOUR CONTRACTS HERE
+]
 
 # ----- Persistent Data -----
 locked_contracts = {}
@@ -270,24 +284,24 @@ LOG_FILE = os.path.join(LOGS_DIR, "pilot_logs.json")
 def load_logs():
     if os.path.exists(LOG_FILE):
         try:
-            with open(LOG_FILE, "r") as f:
+            with open(LOG_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            print("⚠️ Could not read pilot_logs.json, starting fresh.")
+        except Exception:
+            log.warning("⚠️ Could not read pilot_logs.json, starting fresh.")
     return {}
 
 def save_logs():
     try:
-        with open(LOG_FILE, "w") as f:
-            json.dump(pilot_logs, f, indent=4)
+        with open(LOG_FILE, "w", encoding="utf-8") as f:
+            json.dump(pilot_logs, f, indent=4, ensure_ascii=False)
     except Exception as e:
-        print(f"Error saving logs: {e}")
+        log.error("Error saving logs: %s", e)
 
 pilot_logs = load_logs()
 
 # ----- Helpers -----
 def assign_aircraft(contract):
-    dur = contract["duration"]
+    dur = contract.get("duration", "")
     hours = minutes = 0
     if "h" in dur:
         parts = dur.split("h")
@@ -295,7 +309,7 @@ def assign_aircraft(contract):
             hours = int(parts[0])
         except:
             hours = 0
-        if "m" in parts[1]:
+        if len(parts) > 1 and "m" in parts[1]:
             try:
                 minutes = int(parts[1].replace("m", ""))
             except:
@@ -306,7 +320,7 @@ def assign_aircraft(contract):
         except:
             minutes = 0
     total_minutes = hours * 60 + minutes
-    airline = contract["airline"]
+    airline = contract.get("airline", "")
     shorts = AIRCRAFTS.get(airline, {}).get("short", [])
     longs = AIRCRAFTS.get(airline, {}).get("long", [])
 
@@ -316,16 +330,16 @@ def assign_aircraft(contract):
         return random.choice(longs) if longs else (random.choice(shorts) if shorts else "Unknown")
 
 def build_contract_embed(contract, status="available", user=None):
-    airline = contract["airline"]
+    airline = contract.get("airline", "Unknown")
     color = AIRLINE_COLORS.get(airline, discord.Color.blue())
     aircraft = assign_aircraft(contract)
-    callsign = maybe_add_phonetic_suffix(contract["callsign"])
+    callsign = maybe_add_phonetic_suffix(contract.get("callsign", "N/A"))
 
     if status == "expired":
         title = "❌ Contract Expired"
         color = discord.Color.dark_grey()
         footer = "This contract has expired and is no longer available."
-    elif status == "accepted":
+    elif status == "accepted" and user:
         title = f"✅ Contract Accepted by {user.display_name}"
         color = discord.Color.green()
         footer = "This contract has been taken."
@@ -336,8 +350,8 @@ def build_contract_embed(contract, status="available", user=None):
     embed = discord.Embed(title=title, color=color)
     embed.add_field(name="🏢 Airline", value=airline, inline=True)
     embed.add_field(name="🔢 Callsign", value=f"`{callsign}`", inline=True)
-    embed.add_field(name="🗺️ Route", value=contract["route"], inline=False)
-    embed.add_field(name="⏱️ Duration", value=f"`{contract['duration']}`", inline=True)
+    embed.add_field(name="🗺️ Route", value=contract.get("route", "Unknown"), inline=False)
+    embed.add_field(name="⏱️ Duration", value=f"`{contract.get('duration', 'N/A')}`", inline=True)
     embed.add_field(name="🛫 Aircraft", value=aircraft, inline=True)
     embed.set_footer(text=footer)
     return embed
@@ -351,135 +365,156 @@ class AcceptButton(discord.ui.View):
 
     @discord.ui.button(label="Accept Contract ✅", style=discord.ButtonStyle.green)
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
-        user = interaction.user
-        if self.locked:
-            await interaction.response.send_message("❌ This contract is already taken!", ephemeral=True)
-            return
-
-        role_name = ROLE_NAMES.get(self.contract["airline"])
-        if role_name not in [r.name for r in user.roles]:
-            await interaction.response.send_message(f"❌ You are not a {self.contract['airline']} pilot!", ephemeral=True)
-            return
-
-        now = time.time()
-        if user.id in user_cooldowns and now - user_cooldowns[user.id] < COOLDOWN_SECONDS:
-            remaining = int((COOLDOWN_SECONDS - (now - user_cooldowns[user.id])) / 60)
-            await interaction.response.send_message(f"⏳ You are on cooldown. Wait {remaining} more minutes.", ephemeral=True)
-            return
-
-        self.locked = True
-        user_cooldowns[user.id] = now
-        locked_contracts[interaction.message.id]["accepted_by"] = user.id
-
-        user_id = str(user.id)
-        entry = f"{self.contract['callsign']} - {self.contract['airline']} - {self.contract['route']} ({self.contract['duration']})"
-        pilot_logs.setdefault(user_id, []).append(entry)
-        save_logs()
-
-        embed = build_contract_embed(self.contract, "accepted", user)
-        await interaction.message.edit(embed=embed, view=None)
-
-        # Create SimBrief URL
-        route_parts = self.contract["route"].split(" ➡️ ")
-        if len(route_parts) == 2:
-            dep_match = route_parts[0].split("(")[-1].replace(")", "")
-            arr_match = route_parts[1].split("(")[-1].replace(")", "")
-            
-            airline_codes = {
-                "Lufthansa": "DLH",
-                "TAP": "TAP", 
-                "EasyJet": "EZY",
-                "Ryanair": "RYR",
-                "Emirates": "UAE",
-                "Eurowings": "EWG",
-                "KLM": "KLM",
-                "Condor": "CFG",
-                "WizzAir": "WZZ"
-            }
-            
-            airline_code = airline_codes.get(self.contract["airline"], "")
-            flight_number = self.contract["callsign"].replace(airline_code, "").strip()
-            simbrief_url = f"https://dispatch.simbrief.com/options/custom?orig={dep_match}&dest={arr_match}&airline={airline_code}&fltnum={flight_number}"
-        else:
-            simbrief_url = "https://dispatch.simbrief.com/options/new"
-
-        aircraft = assign_aircraft(self.contract)
-        
-        embed_dm = discord.Embed(
-            title=f"✈️ Contract Accepted: **{self.contract['callsign']}**",
-            color=discord.Color.green()
-        )
-        embed_dm.add_field(name="🏢 Airline", value=f"**{self.contract['airline']}**", inline=False)
-        embed_dm.add_field(name="🔢 Callsign", value=f"**{maybe_add_phonetic_suffix(self.contract['callsign'])}**", inline=True)
-        embed_dm.add_field(name="🗺️ Route", value=f"**{self.contract['route']}**", inline=False)
-        embed_dm.add_field(name="⏱️ Duration", value=f"**{self.contract['duration']}**", inline=True)
-        embed_dm.add_field(name="🛫 Aircraft", value=f"**{aircraft}**", inline=True)
-        embed_dm.add_field(
-            name="📋 SimBrief",
-            value=f"Create a flight plan here: [SimBrief Dispatch]({simbrief_url})\n"
-                  "*Route and airline are pre-filled!*\n"
-                  "If you don't have a SimBrief account, create one to use the link!",
-            inline=False
-        )
-
         try:
-            await user.send(embed=embed_dm)
-        except:
-            await interaction.response.send_message("⚠️ Could not DM you the contract!", ephemeral=True)
-            return
+            user = interaction.user
+            if self.locked:
+                await interaction.response.send_message("❌ This contract is already taken!", ephemeral=True)
+                return
 
-        await interaction.response.send_message("✅ You have accepted this contract!", ephemeral=True)
+            role_name = ROLE_NAMES.get(self.contract["airline"])
+            if role_name not in [r.name for r in user.roles]:
+                await interaction.response.send_message(f"❌ You are not a {self.contract['airline']} pilot!", ephemeral=True)
+                return
+
+            now = time.time()
+            if user.id in user_cooldowns and now - user_cooldowns[user.id] < COOLDOWN_SECONDS:
+                remaining = int((COOLDOWN_SECONDS - (now - user_cooldowns[user.id])) / 60)
+                await interaction.response.send_message(f"⏳ You are on cooldown. Wait {remaining} more minutes.", ephemeral=True)
+                return
+
+            # Lock contract and record acceptance
+            self.locked = True
+            user_cooldowns[user.id] = now
+            locked_contracts[interaction.message.id]["accepted_by"] = user.id
+
+            user_id = str(user.id)
+            entry = f"{self.contract['callsign']} - {self.contract['airline']} - {self.contract['route']} ({self.contract['duration']})"
+            pilot_logs.setdefault(user_id, []).append(entry)
+            save_logs()
+
+            embed = build_contract_embed(self.contract, "accepted", user)
+            await interaction.message.edit(embed=embed, view=None)
+
+            # Build SimBrief URL
+            route_parts = self.contract.get("route", "").split(" ➡️ ")
+            if len(route_parts) == 2:
+                dep_match = route_parts[0].split("(")[-1].replace(")", "")
+                arr_match = route_parts[1].split("(")[-1].replace(")", "")
+                airline_codes = {
+                    "Lufthansa": "DLH",
+                    "TAP": "TAP",
+                    "EasyJet": "EZY",
+                    "Ryanair": "RYR",
+                    "Emirates": "UAE",
+                    "Eurowings": "EWG",
+                    "KLM": "KLM",
+                    "Condor": "CFG",
+                    "WizzAir": "WZZ"
+                }
+                airline_code = airline_codes.get(self.contract["airline"], "")
+                flight_number = self.contract["callsign"].replace(airline_code, "").strip()
+                simbrief_url = f"https://dispatch.simbrief.com/options/custom?orig={dep_match}&dest={arr_match}&airline={airline_code}&fltnum={flight_number}"
+            else:
+                simbrief_url = "https://dispatch.simbrief.com/options/new"
+
+            aircraft = assign_aircraft(self.contract)
+            embed_dm = discord.Embed(
+                title=f"✈️ Contract Accepted: **{self.contract['callsign']}**",
+                color=discord.Color.green()
+            )
+            embed_dm.add_field(name="🏢 Airline", value=f"**{self.contract['airline']}**", inline=False)
+            embed_dm.add_field(name="🔢 Callsign", value=f"**{maybe_add_phonetic_suffix(self.contract['callsign'])}**", inline=True)
+            embed_dm.add_field(name="🗺️ Route", value=f"**{self.contract['route']}**", inline=False)
+            embed_dm.add_field(name="⏱️ Duration", value=f"**{self.contract['duration']}**", inline=True)
+            embed_dm.add_field(name="🛫 Aircraft", value=f"**{aircraft}**", inline=True)
+            embed_dm.add_field(
+                name="📋 SimBrief",
+                value=f"Create a flight plan here: [SimBrief Dispatch]({simbrief_url})\n"
+                      "*Route and airline are pre-filled!*\n"
+                      "If you don't have a SimBrief account, create one to use the link!",
+                inline=False
+            )
+
+            try:
+                await user.send(embed=embed_dm)
+            except Exception:
+                await interaction.response.send_message("⚠️ Could not DM you the contract — check your privacy settings.", ephemeral=True)
+                return
+
+            await interaction.response.send_message("✅ You have accepted this contract!", ephemeral=True)
+        except Exception as e:
+            log.exception("Error in AcceptButton.accept: %s", e)
+            try:
+                await interaction.response.send_message("❌ An error occurred while accepting the contract.", ephemeral=True)
+            except Exception:
+                pass
 
 # ----- Expiration Handler -----
 async def handle_contract_expiration(message_id, channel):
-    await asyncio.sleep(40 * 60)  # Expire after 40 mins
-    data = locked_contracts.get(message_id)
-    if not data:
-        return
+    try:
+        await asyncio.sleep(40 * 60)  # Expire after 40 mins
+        data = locked_contracts.get(message_id)
+        if not data:
+            return
 
-    if data["accepted_by"] is None:
+        if data.get("accepted_by") is None:
+            try:
+                message = await channel.fetch_message(message_id)
+                expired_embed = build_contract_embed(data["contract"], "expired")
+                await message.edit(embed=expired_embed, view=None)
+                log.info("Contract %s expired.", message_id)
+            except Exception as e:
+                log.exception("Error expiring contract %s: %s", message_id, e)
+
+        await asyncio.sleep(20 * 60)  # Delete 20 min later (total 1 hour)
         try:
             message = await channel.fetch_message(message_id)
-            expired_embed = build_contract_embed(data["contract"], "expired")
-            await message.edit(embed=expired_embed, view=None)
-            print(f"Contract {message_id} expired.")
+            await message.delete()
+            locked_contracts.pop(message_id, None)
+            log.info("Contract %s deleted after 1 hour.", message_id)
         except Exception as e:
-            print(f"Error expiring contract: {e}")
-
-    await asyncio.sleep(20 * 60)  # Delete 20 min later (total 1 hour)
-    try:
-        message = await channel.fetch_message(message_id)
-        await message.delete()
-        locked_contracts.pop(message_id, None)
-        print(f"Contract {message_id} deleted after 1 hour.")
+            log.exception("Error deleting contract %s: %s", message_id, e)
     except Exception as e:
-        print(f"Error deleting contract: {e}")
+        log.exception("Error in handle_contract_expiration: %s", e)
 
 # ----- Contract Sending -----
 async def send_contract_to_channel(channel, contract):
-    contract["display_callsign"] = maybe_add_phonetic_suffix(contract["callsign"])
-    
-    guild = channel.guild
-    role = discord.utils.get(guild.roles, name=ROLE_NAMES.get(contract["airline"]))
-    role_mention = role.mention if role else ""
+    try:
+        contract["display_callsign"] = maybe_add_phonetic_suffix(contract.get("callsign", "N/A"))
+        guild = channel.guild
+        role = discord.utils.get(guild.roles, name=ROLE_NAMES.get(contract["airline"]))
+        role_mention = role.mention if role else ""
 
-    embed = build_contract_embed(contract)
-    msg = await channel.send(content=role_mention, embed=embed, view=AcceptButton(contract))
-    locked_contracts[msg.id] = {"contract": contract, "accepted_by": None}
-    asyncio.create_task(handle_contract_expiration(msg.id, channel))
+        embed = build_contract_embed(contract)
+        msg = await channel.send(content=role_mention, embed=embed, view=AcceptButton(contract))
+        locked_contracts[msg.id] = {"contract": contract, "accepted_by": None}
+        # start expiration handler
+        bot.loop.create_task(handle_contract_expiration(msg.id, channel))
+        log.info("Sent contract %s to channel %s (msg id %s)", contract.get("callsign"), channel.id, msg.id)
+    except Exception as e:
+        log.exception("Failed to send contract to channel: %s", e)
 
-# ----- Background Loop (1-5 min) -----
-@tasks.loop(seconds=1)
-async def send_contract_loop():
+# ----- Background contract loop as a long-running task -----
+async def background_contract_sender():
     global last_sent_contract
+    await bot.wait_until_ready()
+    log.info("Background contract sender started.")
     channel = bot.get_channel(CHANNEL_ID)
     if not channel:
+        log.error("Channel with ID %s not found. Make sure the bot is in the guild and the CHANNEL_ID is correct.", CHANNEL_ID)
         return
-    available_contracts = [c for c in contracts if c != last_sent_contract]
-    contract = random.choice(available_contracts or contracts)
-    last_sent_contract = contract
-    await send_contract_to_channel(channel, contract)
-    await asyncio.sleep(random.randint(60, 300))  # 1-5 minutes
+
+    while not bot.is_closed():
+        try:
+            available_contracts = [c for c in contracts if c != last_sent_contract]
+            contract = random.choice(available_contracts or contracts)
+            last_sent_contract = contract
+            await send_contract_to_channel(channel, contract)
+        except Exception:
+            log.exception("Error in background_contract_sender while sending contract.")
+        sleep_time = random.randint(60, 300)  # 1-5 minutes
+        log.info("Next contract in %s seconds.", sleep_time)
+        await asyncio.sleep(sleep_time)
 
 # ----- Logbook Command -----
 @bot.tree.command(name="logbook", description="Show your pilot logbook", guild=discord.Object(id=GUILD_ID))
@@ -502,34 +537,40 @@ async def logbook(interaction: discord.Interaction):
 # ----- Events -----
 @bot.event
 async def on_ready():
-    print(f"✅ Bot is online as {bot.user}!")
+    log.info("✅ Bot is online as %s!", bot.user)
 
-    if not send_contract_loop.is_running():
-        send_contract_loop.start()
+    # Start background contract sender if not already
+    if not any(t.get_name() == "background_contract_sender" for t in asyncio.all_tasks(bot.loop)):
+        bot.loop.create_task(background_contract_sender(), name="background_contract_sender")
+        log.info("Background contract sender task scheduled.")
 
-    await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
-    print("✅ Commands synced successfully!")
+    try:
+        await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
+        log.info("✅ Commands synced successfully!")
+    except Exception as e:
+        log.exception("Failed to sync application commands: %s", e)
 
 # ----- Start Everything -----
 def run_webserver():
     """Start FastAPI web server"""
-    print(f"🌐 Starting web server on port {PORT}...")
+    log.info("🌐 Starting web server on port %s...", PORT)
     uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")
 
 def start_bot():
     """Start Discord bot"""
-    print("🤖 Starting Discord bot...")
-    bot.run(TOKEN)
+    log.info("🤖 Starting Discord bot...")
+    try:
+        bot.run(TOKEN)
+    except Exception as e:
+        log.exception("Bot run raised an exception: %s", e)
 
 if __name__ == "__main__":
     # Start web server in background thread
     web_thread = threading.Thread(target=run_webserver, daemon=True)
     web_thread.start()
-    
+
     # Give web server a moment to start
     time.sleep(1)
-    
-    # Start Discord bot in main thread
+
+    # Start Discord bot in main thread (blocking)
     start_bot()
-
-
