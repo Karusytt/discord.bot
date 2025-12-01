@@ -5,6 +5,7 @@ import time
 import json
 import threading
 import aiohttp
+import re
 from dotenv import load_dotenv
 
 import discord
@@ -19,8 +20,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", 0))
 GUILD_ID = int(os.getenv("GUILD_ID", 0))
 COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 2 * 60 * 60))  # 2 hours default
-AVIATIONWEATHER_API_KEY = os.getenv("AVIATIONWEATHER_API_KEY", "")  # Optional API key
-CHECKWX_API_KEY = os.getenv("CHECKWX_API_KEY", "")  # Alternative API key
+CHECKWX_API_KEY = os.getenv("CHECKWX_API_KEY", "")
 
 if not TOKEN or CHANNEL_ID == 0 or GUILD_ID == 0:
     print("❌ ERROR: Missing environment variables (DISCORD_TOKEN / CHANNEL_ID / GUILD_ID)")
@@ -31,7 +31,11 @@ app = FastAPI()
 
 @app.get("/")
 def read_root():
-    return {"status": "Bot is running!"}
+    return {"status": "Bot is running!", "bot": "Flight Dispatcher"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "timestamp": time.time()}
 
 def run_webserver():
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8080)), log_level="info")
@@ -111,7 +115,12 @@ class WeatherFetcher:
                     if '/' in part and part[0].isdigit():
                         temp_parts = part.split('/')
                         temp_c = temp_parts[0]
-                        # Convert to Celsius if needed
+                        # Look for wind info (format: dddffKT)
+                        for wind_part in parts:
+                            if 'KT' in wind_part and wind_part[:3].isdigit():
+                                wind_dir = wind_part[:3]
+                                wind_speed = wind_part[3:5]
+                                return f"Temp: {temp_c}°C, Wind {wind_dir}°/{wind_speed}kt"
                         return f"Temp: {temp_c}°C"
         
         return "Weather data available"
@@ -137,22 +146,13 @@ class WeatherFetcher:
             
         try:
             session = await self.get_session()
-            url = f"https://api.checkwx.com/metar/{icao}/decoded"
+            url = f"https://api.checkwx.com/metar/{icao}"
             headers = {"X-API-Key": CHECKWX_API_KEY}
             async with session.get(url, headers=headers, timeout=10) as response:
                 if response.status == 200:
                     data = await response.json()
                     if data.get('results') > 0:
-                        metar = data['data'][0]
-                        # Extract relevant info
-                        temp_c = metar.get('temperature', {}).get('celsius', 'N/A')
-                        wind = metar.get('wind', {})
-                        wind_speed = wind.get('speed_kts', 'N/A')
-                        wind_dir = wind.get('degrees', 'N/A')
-                        conditions = metar.get('conditions', [])
-                        cond_text = ', '.join(conditions) if conditions else 'Clear'
-                        
-                        return f"{cond_text}, {temp_c}°C, Wind {wind_dir}°/{wind_speed}kt"
+                        return data['data'][0]
         except Exception as e:
             print(f"Error fetching from checkwx for {icao}: {e}")
         return None
@@ -189,12 +189,13 @@ class WeatherFetcher:
             if time.time() - timestamp < self.cache_duration:
                 return cached_data
         
-        # Try APIs in order
         weather = None
         
-        # First try checkwx if API key available
+        # Try checkwx first if API key available
         if CHECKWX_API_KEY:
-            weather = await self.fetch_metar_checkwx(cache_key)
+            metar = await self.fetch_metar_checkwx(cache_key)
+            if metar:
+                weather = metar
         
         # Then try aviationweather.gov
         if not weather:
@@ -226,9 +227,6 @@ def extract_icao_from_route(route):
     """Extract ICAO codes from route string"""
     icao_codes = []
     
-    # Try to find patterns like (EDDF) or EDDF
-    import re
-    
     # Look for ICAO codes in parentheses
     pattern1 = r'\(([A-Z]{4})\)'
     matches1 = re.findall(pattern1, route)
@@ -239,7 +237,7 @@ def extract_icao_from_route(route):
     
     # Combine and deduplicate
     all_matches = matches1 + matches2
-    icao_codes = list(dict.fromkeys(all_matches))  # Remove duplicates
+    icao_codes = list(dict.fromkeys(all_matches))
     
     # Filter to ensure valid ICAO codes (4 letters)
     icao_codes = [code for code in icao_codes if len(code) == 4 and code.isalpha()]
@@ -253,8 +251,8 @@ def maybe_add_phonetic_suffix(callsign):
         return callsign + letters
     return callsign
 
-# ----- Contracts -----
-contracts = [
+# ----- Contracts (You'll paste your contracts here) -----
+contracts = [ 
     # Lufthansa (15 routes)
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
     {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
@@ -462,10 +460,8 @@ def assign_aircraft(contract):
     longs = AIRCRAFTS.get(airline, {}).get("long", [])
 
     if total_minutes <= 180:
-        # prefer short-haul fleet, fallback to long if none
         return random.choice(shorts) if shorts else (random.choice(longs) if longs else "Unknown")
     else:
-        # prefer long-haul fleet, fallback to short if none
         return random.choice(longs) if longs else (random.choice(shorts) if shorts else "Unknown")
 
 async def build_contract_embed(contract, status="available", user=None):
@@ -543,16 +539,12 @@ class AcceptButton(discord.ui.View):
         embed = await build_contract_embed(self.contract, "accepted", user)
         await interaction.message.edit(embed=embed, view=None)
 
-        # ----- Enhanced DM with pre-filled SimBrief -----
-        # Extract airport codes from the route
+        # Create SimBrief URL
         route_parts = self.contract["route"].split(" ➡️ ")
         if len(route_parts) == 2:
-            # Extract departure airport code (text between last space and closing parenthesis)
             dep_match = route_parts[0].split("(")[-1].replace(")", "")
-            # Extract arrival airport code (text between last space and closing parenthesis)
             arr_match = route_parts[1].split("(")[-1].replace(")", "")
             
-            # Define airline codes mapping
             airline_codes = {
                 "Lufthansa": "DLH",
                 "TAP": "TAP", 
@@ -566,19 +558,14 @@ class AcceptButton(discord.ui.View):
             }
             
             airline_code = airline_codes.get(self.contract["airline"], "")
-            
-            # Extract flight number (remove airline code from callsign)
             flight_number = self.contract["callsign"].replace(airline_code, "").strip()
-            
-            # Create the pre-filled SimBrief URL
             simbrief_url = f"https://dispatch.simbrief.com/options/custom?orig={dep_match}&dest={arr_match}&airline={airline_code}&fltnum={flight_number}"
         else:
-            # Fallback to the generic link if route format is unexpected
             simbrief_url = "https://dispatch.simbrief.com/options/new"
 
         aircraft = self.contract.get("assigned_aircraft") or assign_aircraft(self.contract)
         
-        # Get weather for DM as well
+        # Get weather for DM
         icao_codes = extract_icao_from_route(self.contract["route"])
         weather_info = []
         for icao in icao_codes[:2]:
@@ -698,6 +685,11 @@ async def on_disconnect():
     await weather_fetcher.close()
 
 # ----- Run Bot + Webserver -----
-if __name__ == "__main__":
-    threading.Thread(target=run_webserver, daemon=True).start()
+def start_bot():
     bot.run(TOKEN)
+
+if __name__ == "__main__":
+    # Start web server in a separate thread
+    threading.Thread(target=run_webserver, daemon=True).start()
+    # Start the bot
+    start_bot()
