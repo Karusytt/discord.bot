@@ -6,10 +6,8 @@ import json
 import threading
 from dotenv import load_dotenv
 
-# Import discord WITHOUT voice support to avoid audioop error
-try:
-    import discord
-    from discord.ext import tasks, commands
+import discord
+from discord.ext import tasks, commands
 except ImportError:
     print("❌ discord.py not installed. Install with: pip install discord.py")
     exit(1)
@@ -531,3 +529,4 @@ if __name__ == "__main__":
     
     # Start Discord bot in main thread
     start_bot()
+
