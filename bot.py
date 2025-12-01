@@ -3,15 +3,12 @@ import random
 import asyncio
 import time
 import json
-import threading
 import aiohttp
 import re
 from dotenv import load_dotenv
 
 import discord
 from discord.ext import tasks, commands
-from fastapi import FastAPI
-import uvicorn
 
 # ----- Load Environment Variables -----
 load_dotenv()
@@ -19,26 +16,12 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", 0))
 GUILD_ID = int(os.getenv("GUILD_ID", 0))
-COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 2 * 60 * 60))  # 2 hours default
+COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 2 * 60 * 60))
 CHECKWX_API_KEY = os.getenv("CHECKWX_API_KEY", "")
 
 if not TOKEN or CHANNEL_ID == 0 or GUILD_ID == 0:
     print("❌ ERROR: Missing environment variables (DISCORD_TOKEN / CHANNEL_ID / GUILD_ID)")
     exit(1)
-
-# ----- FastAPI Web Server -----
-app = FastAPI()
-
-@app.get("/")
-def read_root():
-    return {"status": "Bot is running!", "bot": "Flight Dispatcher"}
-
-@app.get("/health")
-def health_check():
-    return {"status": "healthy", "timestamp": time.time()}
-
-def run_webserver():
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8080)), log_level="info")
 
 # ----- Discord Setup -----
 intents = discord.Intents.default()
@@ -105,7 +88,6 @@ class WeatherFetcher:
         if not metar_text:
             return "METAR data unavailable"
         
-        # Simple METAR parsing
         lines = metar_text.split('\n')
         for line in lines:
             if line.startswith('METAR'):
@@ -161,7 +143,6 @@ class WeatherFetcher:
         """Fetch from public fallback sources"""
         try:
             session = await self.get_session()
-            # Try multiple public sources
             sources = [
                 f"https://tgftp.nws.noaa.gov/data/observations/metar/stations/{icao}.TXT",
                 f"https://metar.vatsim.net/{icao}",
@@ -182,7 +163,6 @@ class WeatherFetcher:
     
     async def get_weather_for_icao(self, icao):
         """Get weather for an ICAO code with caching"""
-        # Check cache
         cache_key = icao.upper()
         if cache_key in self.cache:
             cached_data, timestamp = self.cache[cache_key]
@@ -191,29 +171,24 @@ class WeatherFetcher:
         
         weather = None
         
-        # Try checkwx first if API key available
         if CHECKWX_API_KEY:
             metar = await self.fetch_metar_checkwx(cache_key)
             if metar:
                 weather = metar
         
-        # Then try aviationweather.gov
         if not weather:
             metar = await self.fetch_metar_aviationweather(cache_key)
             if metar:
                 weather = self.parse_metar(metar)
         
-        # Finally try fallback
         if not weather:
             metar = await self.fetch_metar_fallback(cache_key)
             if metar:
                 weather = self.parse_metar(metar)
         
-        # If still no weather, provide generic info
         if not weather:
             weather = "Weather data temporarily unavailable"
         
-        # Cache the result
         self.cache[cache_key] = (weather, time.time())
         return weather
     
@@ -227,19 +202,15 @@ def extract_icao_from_route(route):
     """Extract ICAO codes from route string"""
     icao_codes = []
     
-    # Look for ICAO codes in parentheses
     pattern1 = r'\(([A-Z]{4})\)'
     matches1 = re.findall(pattern1, route)
     
-    # Look for standalone ICAO codes (4 letters)
     pattern2 = r'\b([A-Z]{4})\b'
     matches2 = re.findall(pattern2, route)
     
-    # Combine and deduplicate
     all_matches = matches1 + matches2
     icao_codes = list(dict.fromkeys(all_matches))
     
-    # Filter to ensure valid ICAO codes (4 letters)
     icao_codes = [code for code in icao_codes if len(code) == 4 and code.isalpha()]
     
     return icao_codes
@@ -251,8 +222,8 @@ def maybe_add_phonetic_suffix(callsign):
         return callsign + letters
     return callsign
 
-# ----- Contracts (You'll paste your contracts here) -----
-contracts = [ 
+# ----- Contracts -----
+contracts = [
     # Lufthansa (15 routes)
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
     {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
@@ -405,7 +376,7 @@ contracts = [
     {"airline": "WizzAir", "callsign": "WZZ2943", "route": "Skopje (LWSK) ➡️ Hamburg (EDDH)", "duration": "2h25m"},
     {"airline": "WizzAir", "callsign": "WZZ4015", "route": "Kutaisi (UGKO) ➡️ Warsaw Modlin (EPMO)", "duration": "3h10m"},
     {"airline": "WizzAir", "callsign": "WZZ3789", "route": "Kyiv (UKKK) ➡️ Dortmund (EDLW)", "duration": "2h35m"}
-]
+]  # PASTE YOUR CONTRACTS HERE
 
 # ----- Persistent Data -----
 locked_contracts = {}
@@ -474,7 +445,7 @@ async def build_contract_embed(contract, status="available", user=None):
     icao_codes = extract_icao_from_route(contract["route"])
     weather_info = []
     
-    for icao in icao_codes[:2]:  # Limit to first 2 airports
+    for icao in icao_codes[:2]:
         weather = await weather_fetcher.get_weather_for_icao(icao)
         weather_info.append(f"{icao}: {weather}")
     
@@ -672,24 +643,25 @@ async def logbook(interaction: discord.Interaction):
 # ----- Events -----
 @bot.event
 async def on_ready():
-    print(f"✅ Bot is online as {bot.user}!")
-
+    print(f"✅ Discord bot is online as {bot.user}!")
+    
     if not send_contract_loop.is_running():
         send_contract_loop.start()
-
-    await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
-    print("✅ Commands synced successfully!")
+    
+    try:
+        await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
+        print("✅ Commands synced successfully!")
+    except Exception as e:
+        print(f"❌ Error syncing commands: {e}")
 
 @bot.event
 async def on_disconnect():
     await weather_fetcher.close()
 
-# ----- Run Bot + Webserver -----
-def start_bot():
-    bot.run(TOKEN)
-
-if __name__ == "__main__":
-    # Start web server in a separate thread
-    threading.Thread(target=run_webserver, daemon=True).start()
-    # Start the bot
-    start_bot()
+# ----- Bot Runner Function -----
+def run_discord_bot():
+    """Run the Discord bot (called from main.py)"""
+    try:
+        bot.run(TOKEN)
+    except Exception as e:
+        print(f"❌ Discord bot failed to start: {e}")
