@@ -7,7 +7,7 @@ import uvicorn
 # Load environment variables
 load_dotenv()
 
-# Create FastAPI app FIRST (this is what the platform looks for)
+# Create FastAPI app (MUST BE AT TOP LEVEL)
 app = FastAPI()
 
 @app.get("/")
@@ -25,13 +25,19 @@ def run_webserver():
 
 # Import and start bot in background
 def start_bot():
-    # Import bot here to avoid circular imports
-    from bot import run_discord_bot
-    run_discord_bot()
+    try:
+        # Import bot here to avoid circular imports
+        from bot import run_discord_bot
+        print("🚀 Starting Discord bot...")
+        run_discord_bot()
+    except Exception as e:
+        print(f"❌ Error starting bot: {e}")
 
 if __name__ == "__main__":
-    # Start web server in main thread
     # Start bot in background thread
     bot_thread = threading.Thread(target=start_bot, daemon=True)
     bot_thread.start()
+    
+    # Start web server in main thread
+    print("🌐 Starting web server...")
     run_webserver()
