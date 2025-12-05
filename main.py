@@ -52,7 +52,7 @@ ROLE_NAMES = {
     "Eurowings": "Eurowings Pilot",
     "KLM": "KLM Pilot",
     "Condor": "Condor Pilot",
-    "Wizz Air": "WizzAir Pilot"  # Added Wizz Air
+    "Wizz Air": "WizzAir Pilot"
 }
 
 AIRLINE_COLORS = {
@@ -64,7 +64,7 @@ AIRLINE_COLORS = {
     "Eurowings": discord.Color.from_str("#8F174F"),
     "KLM": discord.Color.from_str("#0052A1"),
     "Condor": discord.Color.from_str("#FFCC00"),
-    "Wizz Air": discord.Color.from_str("#BF40BF")  # Wizz Air red color
+    "Wizz Air": discord.Color.from_str("#DA291C")
 }
 
 AIRCRAFTS = {
@@ -76,7 +76,7 @@ AIRCRAFTS = {
     "Eurowings": {"short": ["A319", "A320", "A321"], "long": []},
     "KLM": {"short": ["E175", "E190", "E195", "B737-700", "B737-800", "B737-900"], "long": ["B777-200", "B777-300", "B787-9", "B787-10", "A330-200", "A330-300"]},
     "Condor": {"short": ["A320", "A321"], "long": ["A330-900", "B767-300", "B757-300"]},
-    "Wizz Air": {"short": ["A320", "A321", "A320neo", "A321neo"], "long": []}  # Wizz Air fleet (all Airbus narrowbody)
+    "Wizz Air": {"short": ["A320", "A321", "A320neo", "A321neo"], "long": []}
 }
 
 PHONETIC_LETTERS = list("ABCDEFGHJKLMNPQRSTUVWXYZ")  # exclude I/O
@@ -226,22 +226,22 @@ contracts = [
     {"airline": "Condor", "callsign": "CFG2233", "route": "Munich (EDDM) ➡️ Portland (KPDX)", "duration": "11h30m"},
     {"airline": "Condor", "callsign": "CFG2654", "route": "Frankfurt (EDDF) ➡️ Halifax (CYHZ)", "duration": "7h30m"},
 
-    # Wizz Air (15 routes) - Added as requested
-    {"airline": "WizzAir", "callsign": "WZZ1234", "route": "London Luton (EGGW) ➡️ Budapest (LHBP)", "duration": "2h20m"},
-    {"airline": "WizzAir", "callsign": "WZZ4567", "route": "Warsaw Chopin (EPWA) ➡️ Barcelona (LEBL)", "duration": "2h50m"},
-    {"airline": "WizzAir", "callsign": "WZZ7890", "route": "Budapest (LHBP) ➡️ Dubai Al Maktoum (OMDW)", "duration": "5h15m"},
-    {"airline": "WizzAir", "callsign": "WZZ2345", "route": "Rome Fiumicino (LIRF) ➡️ Warsaw Modlin (EPMO)", "duration": "2h10m"},
-    {"airline": "WizzAir", "callsign": "WZZ6789", "route": "Vienna (LOWW) ➡️ London Gatwick (EGKK)", "duration": "2h15m"},
-    {"airline": "WizzAir", "callsign": "WZZ3456", "route": "Kyiv (UKKK) ➡️ Milan Bergamo (LIME)", "duration": "2h40m"},
-    {"airline": "WizzAir", "callsign": "WZZ8901", "route": "Abu Dhabi (OMAA) ➡️ Athens (LGAV)", "duration": "4h45m"},
-    {"airline": "WizzAir", "callsign": "WZZ1122", "route": "Bucharest (LROP) ➡️ London Luton (EGGW)", "duration": "3h10m"},
-    {"airline": "WizzAir", "callsign": "WZZ3344", "route": "Sofia (LBSF) ➡️ Dortmund (EDLW)", "duration": "2h30m"},
-    {"airline": "WizzAir", "callsign": "WZZ5566", "route": "Tel Aviv (LLBG) ➡️ Prague (LKPR)", "duration": "3h55m"},
-    {"airline": "WizzAir", "callsign": "WZZ7788", "route": "Katowice (EPKT) ➡️ Reykjavik (BIKF)", "duration": "3h50m"},
-    {"airline": "WizzAir", "callsign": "WZZ9900", "route": "Lisbon (LPPT) ➡️ Warsaw Chopin (EPWA)", "duration": "3h20m"},
-    {"airline": "WizzAir", "callsign": "WZZ2233", "route": "Istanbul Sabiha (LTFJ) ➡️ Berlin Brandenburg (EDDB)", "duration": "2h55m"},
-    {"airline": "WizzAir", "callsign": "WZZ4455", "route": "Tirana (LATI) ➡️ Memmingen (EDJA)", "duration": "1h45m"},
-    {"airline": "WizzAir", "callsign": "WZZ6677", "route": "Malta (LMML) ➡️ Milan Malpensa (LIMC)", "duration": "1h50m"}
+    # Wizz Air (15 routes) - Added
+    {"airline": "Wizz Air", "callsign": "WZZ1234", "route": "London Luton (EGGW) ➡️ Budapest (LHBP)", "duration": "2h20m"},
+    {"airline": "Wizz Air", "callsign": "WZZ4567", "route": "Warsaw Chopin (EPWA) ➡️ Barcelona (LEBL)", "duration": "2h50m"},
+    {"airline": "Wizz Air", "callsign": "WZZ7890", "route": "Budapest (LHBP) ➡️ Dubai Al Maktoum (OMDW)", "duration": "5h15m"},
+    {"airline": "Wizz Air", "callsign": "WZZ2345", "route": "Rome Fiumicino (LIRF) ➡️ Warsaw Modlin (EPMO)", "duration": "2h10m"},
+    {"airline": "Wizz Air", "callsign": "WZZ6789", "route": "Vienna (LOWW) ➡️ London Gatwick (EGKK)", "duration": "2h15m"},
+    {"airline": "Wizz Air", "callsign": "WZZ3456", "route": "Kyiv (UKKK) ➡️ Milan Bergamo (LIME)", "duration": "2h40m"},
+    {"airline": "Wizz Air", "callsign": "WZZ8901", "route": "Abu Dhabi (OMAA) ➡️ Athens (LGAV)", "duration": "4h45m"},
+    {"airline": "Wizz Air", "callsign": "WZZ1122", "route": "Bucharest (LROP) ➡️ London Luton (EGGW)", "duration": "3h10m"},
+    {"airline": "Wizz Air", "callsign": "WZZ3344", "route": "Sofia (LBSF) ➡️ Dortmund (EDLW)", "duration": "2h30m"},
+    {"airline": "Wizz Air", "callsign": "WZZ5566", "route": "Tel Aviv (LLBG) ➡️ Prague (LKPR)", "duration": "3h55m"},
+    {"airline": "Wizz Air", "callsign": "WZZ7788", "route": "Katowice (EPKT) ➡️ Reykjavik (BIKF)", "duration": "3h50m"},
+    {"airline": "Wizz Air", "callsign": "WZZ9900", "route": "Lisbon (LPPT) ➡️ Warsaw Chopin (EPWA)", "duration": "3h20m"},
+    {"airline": "Wizz Air", "callsign": "WZZ2233", "route": "Istanbul Sabiha (LTFJ) ➡️ Berlin Brandenburg (EDDB)", "duration": "2h55m"},
+    {"airline": "Wizz Air", "callsign": "WZZ4455", "route": "Tirana (LATI) ➡️ Memmingen (EDJA)", "duration": "1h45m"},
+    {"airline": "Wizz Air", "callsign": "WZZ6677", "route": "Malta (LMML) ➡️ Milan Malpensa (LIMC)", "duration": "1h50m"}
 ]
 
 # ----- Persistent Data -----
@@ -386,7 +386,7 @@ class AcceptButton(discord.ui.View):
                 "Eurowings": "EWG",
                 "KLM": "KLM",
                 "Condor": "CFG",
-                "Wizz Air": "WZZ"  # Added Wizz Air
+                "Wizz Air": "WZZ"
             }
             
             airline_code = airline_codes.get(self.contract["airline"], "")
