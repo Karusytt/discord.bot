@@ -8,8 +8,6 @@ from dotenv import load_dotenv
 
 import discord
 from discord.ext import tasks, commands
-from fastapi import FastAPI
-import uvicorn
 
 # ----- Load Environment Variables -----
 load_dotenv()
@@ -22,16 +20,6 @@ COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 2 * 60 * 60))  # 2 hours de
 if not TOKEN or CHANNEL_ID == 0 or GUILD_ID == 0:
     print("❌ ERROR: Missing environment variables (DISCORD_TOKEN / CHANNEL_ID / GUILD_ID)")
     exit(1)
-
-# ----- FastAPI Web Server -----
-app = FastAPI()
-
-@app.get("/")
-def read_root():
-    return {"status": "Bot is running!"}
-
-def run_webserver():
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8080)), log_level="info")
 
 # ----- Discord Setup -----
 intents = discord.Intents.default()
@@ -226,7 +214,7 @@ contracts = [
     {"airline": "Condor", "callsign": "CFG2233", "route": "Munich (EDDM) ➡️ Portland (KPDX)", "duration": "11h30m"},
     {"airline": "Condor", "callsign": "CFG2654", "route": "Frankfurt (EDDF) ➡️ Halifax (CYHZ)", "duration": "7h30m"},
 
-    # Wizz Air (15 routes) - Added
+    # Wizz Air (15 routes) - Added as requested
     {"airline": "Wizz Air", "callsign": "WZZ1234", "route": "London Luton (EGGW) ➡️ Budapest (LHBP)", "duration": "2h20m"},
     {"airline": "Wizz Air", "callsign": "WZZ4567", "route": "Warsaw Chopin (EPWA) ➡️ Barcelona (LEBL)", "duration": "2h50m"},
     {"airline": "Wizz Air", "callsign": "WZZ7890", "route": "Budapest (LHBP) ➡️ Dubai Al Maktoum (OMDW)", "duration": "5h15m"},
@@ -507,7 +495,6 @@ async def on_ready():
     await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
     print("✅ Commands synced successfully!")
 
-# ----- Run Bot + Webserver -----
+# ----- Run Bot -----
 if __name__ == "__main__":
-    threading.Thread(target=run_webserver, daemon=True).start()
     bot.run(TOKEN)
