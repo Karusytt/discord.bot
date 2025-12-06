@@ -47,6 +47,12 @@ if not TOKEN or CHANNEL_ID == 0 or GUILD_ID == 0:
 
 logger.info("🚀 Starting Flight Dispatcher Bot...")
 
+# ------ Log the enviormental variables ------ #
+logger.info(f"✅ COOLDOWN_SECONDS: {COOLDOWN_SECONDS}")
+logger.info(f"✅ GUILD_ID: {GUILD_ID}")
+logger.info(f"✅ CHANNEL_ID: {CHANNEL_ID}")
+logger.info(f"✅ TOKEN length: {len(TOKEN) if TOKEN else 0}")
+
 # ----- FastAPI App -----
 app = FastAPI()
 
@@ -553,3 +559,4 @@ if __name__ == "__main__":
     # Start Discord bot in main process
     logger.info("🤖 Starting Discord bot...")
     bot.run(TOKEN)
+
