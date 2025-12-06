@@ -6,15 +6,81 @@ import json
 import threading
 from dotenv import load_dotenv
 
+# ========== COMPREHENSIVE LOGGING DIAGNOSTIC - ADDED ==========
+import logging
+import sys
+from datetime import datetime
+
+print("\n" + "="*80)
+print("STARTING COMPREHENSIVE LOGGING DIAGNOSTIC")
+print("="*80 + "\n")
+
+# Capture initial state
+print("1. CAPTURING INITIAL LOGGING STATE:")
+root_logger = logging.getLogger()
+print(f"   Root logger level: {root_logger.level} ({logging.getLevelName(root_logger.level)})")
+print(f"   Root handlers count: {len(root_logger.handlers)}")
+for i, handler in enumerate(root_logger.handlers):
+    print(f"   Handler {i}: {type(handler).__name__}")
+
+print("\n2. TESTING LOGGING BEFORE ANY CONFIGURATION:")
+test_logger = logging.getLogger("__diagnostic__")
+test_logger.info("Test INFO before config - shouldn't appear")
+test_logger.error("Test ERROR before config - shouldn't appear")
+
+print("\n3. CONFIGURING BASIC LOGGING (DEBUG LEVEL)...")
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(name)-25s - %(levelname)-8s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+
+print("\n4. AFTER BASIC CONFIGURATION:")
+print(f"   Root logger level: {root_logger.level} ({logging.getLevelName(root_logger.level)})")
+print(f"   Root handlers count: {len(root_logger.handlers)}")
+
+print("\n5. TESTING OUR LOGGER:")
+logger = logging.getLogger(__name__)
+logger.debug("Debug message from our logger")
+logger.info("Info message from our logger - About to start Uvicorn...")
+logger.warning("Warning message from our logger")
+logger.error("Error message from our logger")
+
+print("\n6. CHECKING UVICORN LOGGER CONFIGURATION:")
+uvicorn_logger = logging.getLogger("uvicorn")
+print(f"   Uvicorn logger effective level: {uvicorn_logger.getEffectiveLevel()} ({logging.getLevelName(uvicorn_logger.getEffectiveLevel())})")
+print(f"   Uvicorn propagate: {uvicorn_logger.propagate}")
+print(f"   Uvicorn handlers: {len(uvicorn_logger.handlers)}")
+
+uvicorn_access = logging.getLogger("uvicorn.access")
+print(f"   Uvicorn.access effective level: {uvicorn_access.getEffectiveLevel()} ({logging.getLevelName(uvicorn_access.getEffectiveLevel())})")
+
+print("\n7. SETTING UP LOG TRACING (MONKEY PATCH)...")
+original_log = logging.Logger._log
+
+def traced_log(self, level, msg, args, exc_info=None, extra=None, stack_info=False, stacklevel=1):
+    level_name = logging.getLevelName(level)
+    # Only trace uvicorn-related logs to avoid spam
+    if self.name.startswith('uvicorn') or self.name == __name__:
+        print(f"   [TRACE] {self.name:20} {level_name:8} {msg}")
+    return original_log(self, level, msg, args, exc_info, extra, stack_info, stacklevel)
+
+# Apply the tracing patch
+logging.Logger._log = traced_log
+
+print("\n8. TESTING WITH TRACING ENABLED:")
+logger.info("Testing INFO with tracing")
+logger.error("Testing ERROR with tracing")
+uvicorn_logger.info("Uvicorn INFO test with tracing")
+uvicorn_logger.error("Uvicorn ERROR test with tracing")
+
+print("\n" + "="*80)
+print("DIAGNOSTIC COMPLETE - CONTINUING WITH APPLICATION")
+print("="*80 + "\n")
+# ========== END OF DIAGNOSTIC ==========
+
 import discord
 from discord.ext import tasks, commands
-
-import logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-# Log what Uvicorn is doing
-logger.info("About to start Uvicorn...")
 
 # ----- FastAPI Web Server for UptimeRobot -----
 from fastapi import FastAPI
@@ -513,6 +579,8 @@ async def on_ready():
 if __name__ == "__main__":
     # Start the web server in a separate process
     def run_server():
+        print("\n[WEB SERVER PROCESS STARTING]")
+        # Configure uvicorn with warning level to avoid INFO noise
         uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")
     
     # Start web server in background thread
@@ -525,7 +593,9 @@ if __name__ == "__main__":
     # Give web server a moment to start
     time.sleep(2)
     
+    # Restore original logging before starting Discord bot
+    logging.Logger._log = original_log
+    
     # Start Discord bot in main process
     print("🤖 Starting Discord bot...")
     bot.run(TOKEN)
-
