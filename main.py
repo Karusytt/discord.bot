@@ -502,24 +502,22 @@ async def on_ready():
     await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
     print("✅ Commands synced successfully!")
 
-# ----- Start Everything -----
-def run_webserver():
-    """Start FastAPI web server"""
-    print(f"🌐 Starting web server on port {PORT}...")
-    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")
-
-def start_bot():
-    """Start Discord bot"""
-    print("🤖 Starting Discord bot...")
-    bot.run(TOKEN)
-
+# ----- Run Bot -----
 if __name__ == "__main__":
+    # Start the web server in a separate process
+    def run_server():
+        uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")
+    
     # Start web server in background thread
-    web_thread = threading.Thread(target=run_webserver, daemon=True)
-    web_thread.start()
+    import multiprocessing
+    server_process = multiprocessing.Process(target=run_server)
+    server_process.daemon = True
+    server_process.start()
+    print(f"🌐 Web server started on port {PORT}")
     
     # Give web server a moment to start
-    time.sleep(1)
+    time.sleep(2)
     
-    # Start Discord bot in main thread
-    start_bot()
+    # Start Discord bot in main process
+    print("🤖 Starting Discord bot...")
+    bot.run(TOKEN)
