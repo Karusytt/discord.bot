@@ -9,17 +9,35 @@ from dotenv import load_dotenv
 import discord
 from discord.ext import tasks, commands
 
+# ----- FastAPI Web Server for UptimeRobot -----
+from fastapi import FastAPI
+import uvicorn
+
 # ----- Load Environment Variables -----
 load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", 0))
 GUILD_ID = int(os.getenv("GUILD_ID", 0))
-COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 2 * 60 * 60))  # 2 hours default
+COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 2 * 60 * 60))
+PORT = int(os.getenv("PORT", 8080))
 
 if not TOKEN or CHANNEL_ID == 0 or GUILD_ID == 0:
     print("❌ ERROR: Missing environment variables (DISCORD_TOKEN / CHANNEL_ID / GUILD_ID)")
     exit(1)
+
+print("🚀 Starting Flight Dispatcher Bot...")
+
+# ----- FastAPI App -----
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"status": "Flight Dispatcher Bot is running!"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "timestamp": time.time()}
 
 # ----- Discord Setup -----
 intents = discord.Intents.default()
@@ -285,17 +303,15 @@ def assign_aircraft(contract):
     longs = AIRCRAFTS.get(airline, {}).get("long", [])
 
     if total_minutes <= 180:
-        # prefer short-haul fleet, fallback to long if none
         return random.choice(shorts) if shorts else (random.choice(longs) if longs else "Unknown")
     else:
-        # prefer long-haul fleet, fallback to short if none
         return random.choice(longs) if longs else (random.choice(shorts) if shorts else "Unknown")
 
 def build_contract_embed(contract, status="available", user=None):
     airline = contract["airline"]
     color = AIRLINE_COLORS.get(airline, discord.Color.blue())
-    aircraft = contract.get("assigned_aircraft") or assign_aircraft(contract)
-    callsign = contract.get("display_callsign", contract["callsign"])
+    aircraft = assign_aircraft(contract)
+    callsign = maybe_add_phonetic_suffix(contract["callsign"])
 
     if status == "expired":
         title = "❌ Contract Expired"
@@ -355,16 +371,12 @@ class AcceptButton(discord.ui.View):
         embed = build_contract_embed(self.contract, "accepted", user)
         await interaction.message.edit(embed=embed, view=None)
 
-        # ----- Enhanced DM with pre-filled SimBrief -----
-        # Extract airport codes from the route
+        # Create SimBrief URL
         route_parts = self.contract["route"].split(" ➡️ ")
         if len(route_parts) == 2:
-            # Extract departure airport code (text between last space and closing parenthesis)
             dep_match = route_parts[0].split("(")[-1].replace(")", "")
-            # Extract arrival airport code (text between last space and closing parenthesis)
             arr_match = route_parts[1].split("(")[-1].replace(")", "")
             
-            # Define airline codes mapping
             airline_codes = {
                 "Lufthansa": "DLH",
                 "TAP": "TAP", 
@@ -378,23 +390,19 @@ class AcceptButton(discord.ui.View):
             }
             
             airline_code = airline_codes.get(self.contract["airline"], "")
-            
-            # Extract flight number (remove airline code from callsign)
             flight_number = self.contract["callsign"].replace(airline_code, "").strip()
-            
-            # Create the pre-filled SimBrief URL
             simbrief_url = f"https://dispatch.simbrief.com/options/custom?orig={dep_match}&dest={arr_match}&airline={airline_code}&fltnum={flight_number}"
         else:
-            # Fallback to the generic link if route format is unexpected
             simbrief_url = "https://dispatch.simbrief.com/options/new"
 
-        aircraft = self.contract.get("assigned_aircraft") or assign_aircraft(self.contract)
+        aircraft = assign_aircraft(self.contract)
+        
         embed_dm = discord.Embed(
             title=f"✈️ Contract Accepted: **{self.contract['callsign']}**",
             color=discord.Color.green()
         )
         embed_dm.add_field(name="🏢 Airline", value=f"**{self.contract['airline']}**", inline=False)
-        embed_dm.add_field(name="🔢 Callsign", value=f"**{self.contract.get('display_callsign', self.contract['callsign'])}**", inline=True)
+        embed_dm.add_field(name="🔢 Callsign", value=f"**{maybe_add_phonetic_suffix(self.contract['callsign'])}**", inline=True)
         embed_dm.add_field(name="🗺️ Route", value=f"**{self.contract['route']}**", inline=False)
         embed_dm.add_field(name="⏱️ Duration", value=f"**{self.contract['duration']}**", inline=True)
         embed_dm.add_field(name="🛫 Aircraft", value=f"**{aircraft}**", inline=True)
@@ -441,7 +449,6 @@ async def handle_contract_expiration(message_id, channel):
 
 # ----- Contract Sending -----
 async def send_contract_to_channel(channel, contract):
-    contract["assigned_aircraft"] = assign_aircraft(contract)
     contract["display_callsign"] = maybe_add_phonetic_suffix(contract["callsign"])
     
     guild = channel.guild
@@ -495,6 +502,24 @@ async def on_ready():
     await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
     print("✅ Commands synced successfully!")
 
-# ----- Run Bot -----
-if __name__ == "__main__":
+# ----- Start Everything -----
+def run_webserver():
+    """Start FastAPI web server"""
+    print(f"🌐 Starting web server on port {PORT}...")
+    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")
+
+def start_bot():
+    """Start Discord bot"""
+    print("🤖 Starting Discord bot...")
     bot.run(TOKEN)
+
+if __name__ == "__main__":
+    # Start web server in background thread
+    web_thread = threading.Thread(target=run_webserver, daemon=True)
+    web_thread.start()
+    
+    # Give web server a moment to start
+    time.sleep(1)
+    
+    # Start Discord bot in main thread
+    start_bot()
