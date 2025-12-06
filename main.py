@@ -6,81 +6,27 @@ import json
 import threading
 from dotenv import load_dotenv
 
-# ========== COMPREHENSIVE LOGGING DIAGNOSTIC - ADDED ==========
-import logging
-import sys
-from datetime import datetime
-
-print("\n" + "="*80)
-print("STARTING COMPREHENSIVE LOGGING DIAGNOSTIC")
-print("="*80 + "\n")
-
-# Capture initial state
-print("1. CAPTURING INITIAL LOGGING STATE:")
-root_logger = logging.getLogger()
-print(f"   Root logger level: {root_logger.level} ({logging.getLevelName(root_logger.level)})")
-print(f"   Root handlers count: {len(root_logger.handlers)}")
-for i, handler in enumerate(root_logger.handlers):
-    print(f"   Handler {i}: {type(handler).__name__}")
-
-print("\n2. TESTING LOGGING BEFORE ANY CONFIGURATION:")
-test_logger = logging.getLogger("__diagnostic__")
-test_logger.info("Test INFO before config - shouldn't appear")
-test_logger.error("Test ERROR before config - shouldn't appear")
-
-print("\n3. CONFIGURING BASIC LOGGING (DEBUG LEVEL)...")
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(name)-25s - %(levelname)-8s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
-
-print("\n4. AFTER BASIC CONFIGURATION:")
-print(f"   Root logger level: {root_logger.level} ({logging.getLevelName(root_logger.level)})")
-print(f"   Root handlers count: {len(root_logger.handlers)}")
-
-print("\n5. TESTING OUR LOGGER:")
-logger = logging.getLogger(__name__)
-logger.debug("Debug message from our logger")
-logger.info("Info message from our logger - About to start Uvicorn...")
-logger.warning("Warning message from our logger")
-logger.error("Error message from our logger")
-
-print("\n6. CHECKING UVICORN LOGGER CONFIGURATION:")
-uvicorn_logger = logging.getLogger("uvicorn")
-print(f"   Uvicorn logger effective level: {uvicorn_logger.getEffectiveLevel()} ({logging.getLevelName(uvicorn_logger.getEffectiveLevel())})")
-print(f"   Uvicorn propagate: {uvicorn_logger.propagate}")
-print(f"   Uvicorn handlers: {len(uvicorn_logger.handlers)}")
-
-uvicorn_access = logging.getLogger("uvicorn.access")
-print(f"   Uvicorn.access effective level: {uvicorn_access.getEffectiveLevel()} ({logging.getLevelName(uvicorn_access.getEffectiveLevel())})")
-
-print("\n7. SETTING UP LOG TRACING (MONKEY PATCH)...")
-original_log = logging.Logger._log
-
-def traced_log(self, level, msg, args, exc_info=None, extra=None, stack_info=False, stacklevel=1):
-    level_name = logging.getLevelName(level)
-    # Only trace uvicorn-related logs to avoid spam
-    if self.name.startswith('uvicorn') or self.name == __name__:
-        print(f"   [TRACE] {self.name:20} {level_name:8} {msg}")
-    return original_log(self, level, msg, args, exc_info, extra, stack_info, stacklevel)
-
-# Apply the tracing patch
-logging.Logger._log = traced_log
-
-print("\n8. TESTING WITH TRACING ENABLED:")
-logger.info("Testing INFO with tracing")
-logger.error("Testing ERROR with tracing")
-uvicorn_logger.info("Uvicorn INFO test with tracing")
-uvicorn_logger.error("Uvicorn ERROR test with tracing")
-
-print("\n" + "="*80)
-print("DIAGNOSTIC COMPLETE - CONTINUING WITH APPLICATION")
-print("="*80 + "\n")
-# ========== END OF DIAGNOSTIC ==========
-
 import discord
 from discord.ext import tasks, commands
+
+import logging
+
+# ===== CRITICAL FIX: Disable Uvicorn's default logging =====
+# Disable ALL uvicorn logging BEFORE importing uvicorn
+logging.getLogger("uvicorn").disabled = True
+logging.getLogger("uvicorn.access").disabled = True
+logging.getLogger("uvicorn.error").disabled = True
+
+# Configure our own logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(name)s - %(levelname)s - %(message)s'
+)
+
+logger = logging.getLogger(__name__)
+
+# Log what Uvicorn is doing
+logger.info("About to start Uvicorn...")
 
 # ----- FastAPI Web Server for UptimeRobot -----
 from fastapi import FastAPI
@@ -99,7 +45,7 @@ if not TOKEN or CHANNEL_ID == 0 or GUILD_ID == 0:
     print("❌ ERROR: Missing environment variables (DISCORD_TOKEN / CHANNEL_ID / GUILD_ID)")
     exit(1)
 
-print("🚀 Starting Flight Dispatcher Bot...")
+logger.info("🚀 Starting Flight Dispatcher Bot...")
 
 # ----- FastAPI App -----
 app = FastAPI()
@@ -167,7 +113,7 @@ def maybe_add_phonetic_suffix(callsign):
         return callsign + letters
     return callsign
 
-# ----- Contracts -----
+# ----- Contracts ----- #
 contracts = [
     # Lufthansa (15 routes)
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
@@ -338,7 +284,7 @@ def load_logs():
             with open(LOG_FILE, "r") as f:
                 return json.load(f)
         except:
-            print("⚠️ Could not read pilot_logs.json, starting fresh.")
+            logger.warning("⚠️ Could not read pilot_logs.json, starting fresh.")
     return {}
 
 def save_logs():
@@ -346,7 +292,7 @@ def save_logs():
         with open(LOG_FILE, "w") as f:
             json.dump(pilot_logs, f, indent=4)
     except Exception as e:
-        print(f"Error saving logs: {e}")
+        logger.error(f"Error saving logs: {e}")
 
 pilot_logs = load_logs()
 
@@ -507,18 +453,18 @@ async def handle_contract_expiration(message_id, channel):
             message = await channel.fetch_message(message_id)
             expired_embed = build_contract_embed(data["contract"], "expired")
             await message.edit(embed=expired_embed, view=None)
-            print(f"Contract {message_id} expired.")
+            logger.info(f"Contract {message_id} expired.")
         except Exception as e:
-            print(f"Error expiring contract: {e}")
+            logger.error(f"Error expiring contract: {e}")
 
     await asyncio.sleep(20 * 60)  # Delete 20 min later (total 1 hour)
     try:
         message = await channel.fetch_message(message_id)
         await message.delete()
         locked_contracts.pop(message_id, None)
-        print(f"Contract {message_id} deleted after 1 hour.")
+        logger.info(f"Contract {message_id} deleted after 1 hour.")
     except Exception as e:
-        print(f"Error deleting contract: {e}")
+        logger.error(f"Error deleting contract: {e}")
 
 # ----- Contract Sending -----
 async def send_contract_to_channel(channel, contract):
@@ -567,35 +513,43 @@ async def logbook(interaction: discord.Interaction):
 # ----- Events -----
 @bot.event
 async def on_ready():
-    print(f"✅ Bot is online as {bot.user}!")
+    logger.info(f"✅ Bot is online as {bot.user}!")
 
     if not send_contract_loop.is_running():
         send_contract_loop.start()
 
     await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
-    print("✅ Commands synced successfully!")
+    logger.info("✅ Commands synced successfully!")
 
 # ----- Run Bot -----
 if __name__ == "__main__":
-    # Start the web server in a separate process
+    # Start the web server in a separate process with NO logging
     def run_server():
-        print("\n[WEB SERVER PROCESS STARTING]")
-        # Configure uvicorn with warning level to avoid INFO noise
-        uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")
+        # CRITICAL: Run uvicorn with NO logging enabled
+        config = uvicorn.Config(
+            app, 
+            host="0.0.0.0", 
+            port=PORT, 
+            log_level=None,  # Disable all uvicorn logging
+            access_log=False,  # Disable access logs
+            log_config=None  # No log config at all
+        )
+        server = uvicorn.Server(config)
+        
+        # Log the startup ourselves
+        logger.info(f"🌐 Web server starting on http://0.0.0.0:{PORT}")
+        
+        server.run()
     
     # Start web server in background thread
     import multiprocessing
     server_process = multiprocessing.Process(target=run_server)
     server_process.daemon = True
     server_process.start()
-    print(f"🌐 Web server started on port {PORT}")
     
     # Give web server a moment to start
     time.sleep(2)
     
-    # Restore original logging before starting Discord bot
-    logging.Logger._log = original_log
-    
     # Start Discord bot in main process
-    print("🤖 Starting Discord bot...")
+    logger.info("🤖 Starting Discord bot...")
     bot.run(TOKEN)
