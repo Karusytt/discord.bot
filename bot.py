@@ -8,27 +8,6 @@ from dotenv import load_dotenv
 
 import discord
 from discord.ext import tasks, commands
-
-import logging
-
-# ===== CRITICAL FIX: Disable Uvicorn's default logging =====
-# Disable ALL uvicorn logging BEFORE importing uvicorn
-logging.getLogger("uvicorn").disabled = True
-logging.getLogger("uvicorn.access").disabled = True
-logging.getLogger("uvicorn.error").disabled = True
-
-# Configure our own logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(name)s - %(levelname)s - %(message)s'
-)
-
-logger = logging.getLogger(__name__)
-
-# Log what Uvicorn is doing
-logger.info("About to start Uvicorn...")
-
-# ----- FastAPI Web Server for UptimeRobot -----
 from fastapi import FastAPI
 import uvicorn
 
@@ -38,31 +17,21 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", 0))
 GUILD_ID = int(os.getenv("GUILD_ID", 0))
-COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 2 * 60 * 60))
-PORT = int(os.getenv("PORT", 8080))
+COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 2 * 60 * 60))  # 2 hours default
 
 if not TOKEN or CHANNEL_ID == 0 or GUILD_ID == 0:
     print("❌ ERROR: Missing environment variables (DISCORD_TOKEN / CHANNEL_ID / GUILD_ID)")
     exit(1)
 
-logger.info("🚀 Starting Flight Dispatcher Bot...")
-
-# ------ Log the enviormental variables ------ #
-logger.info(f"✅ COOLDOWN_SECONDS: {COOLDOWN_SECONDS}")
-logger.info(f"✅ GUILD_ID: {GUILD_ID}")
-logger.info(f"✅ CHANNEL_ID: {CHANNEL_ID}")
-logger.info(f"✅ TOKEN length: {len(TOKEN) if TOKEN else 0}")
-
-# ----- FastAPI App -----
+# ----- FastAPI Web Server -----
 app = FastAPI()
 
 @app.get("/")
 def read_root():
-    return {"status": "Flight Dispatcher Bot is running!"}
+    return {"status": "Bot is running!"}
 
-@app.get("/health")
-def health_check():
-    return {"status": "healthy", "timestamp": time.time()}
+def run_webserver():
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8080)), log_level="info")
 
 # ----- Discord Setup -----
 intents = discord.Intents.default()
@@ -82,8 +51,7 @@ ROLE_NAMES = {
     "Emirates": "Emirates Pilot",
     "Eurowings": "Eurowings Pilot",
     "KLM": "KLM Pilot",
-    "Condor": "Condor Pilot",
-    "Wizz Air": "WizzAir Pilot"
+    "Condor": "Condor Pilot"
 }
 
 AIRLINE_COLORS = {
@@ -94,8 +62,7 @@ AIRLINE_COLORS = {
     "Emirates": discord.Color.purple(),
     "Eurowings": discord.Color.from_str("#8F174F"),
     "KLM": discord.Color.from_str("#0052A1"),
-    "Condor": discord.Color.from_str("#FFCC00"),
-    "Wizz Air": discord.Color.from_str("#DA291C")
+    "Condor": discord.Color.from_str("#FFCC00")
 }
 
 AIRCRAFTS = {
@@ -106,8 +73,7 @@ AIRCRAFTS = {
     "Emirates": {"short": [], "long": ["B777-300ER", "A380", "B787-9", "A350-900"]},
     "Eurowings": {"short": ["A319", "A320", "A321"], "long": []},
     "KLM": {"short": ["E175", "E190", "E195", "B737-700", "B737-800", "B737-900"], "long": ["B777-200", "B777-300", "B787-9", "B787-10", "A330-200", "A330-300"]},
-    "Condor": {"short": ["A320", "A321"], "long": ["A330-900", "B767-300", "B757-300"]},
-    "Wizz Air": {"short": ["A320", "A321", "A320neo", "A321neo"], "long": []}
+    "Condor": {"short": ["A320", "A321"], "long": ["A330-900", "B767-300", "B757-300"]}
 }
 
 PHONETIC_LETTERS = list("ABCDEFGHJKLMNPQRSTUVWXYZ")  # exclude I/O
@@ -119,9 +85,9 @@ def maybe_add_phonetic_suffix(callsign):
         return callsign + letters
     return callsign
 
-# ----- Contracts ----- #
+# ----- Contracts -----
 contracts = [
-    # Lufthansa (15 routes)
+  # Lufthansa (15 routes)
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
     {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
     {"airline": "Lufthansa", "callsign": "DLH456", "route": "Frankfurt (EDDF) ➡️ Singapore (WSSS)", "duration": "12h30m"},
@@ -255,24 +221,7 @@ contracts = [
     {"airline": "Condor", "callsign": "CFG2341", "route": "Munich (EDDM) ➡️ Denver (KDEN)", "duration": "11h15m"},
     {"airline": "Condor", "callsign": "CFG1987", "route": "Frankfurt (EDDF) ➡️ San Diego (KSAN)", "duration": "12h15m"},
     {"airline": "Condor", "callsign": "CFG2233", "route": "Munich (EDDM) ➡️ Portland (KPDX)", "duration": "11h30m"},
-    {"airline": "Condor", "callsign": "CFG2654", "route": "Frankfurt (EDDF) ➡️ Halifax (CYHZ)", "duration": "7h30m"},
-
-    # Wizz Air (15 routes) - Added as requested
-    {"airline": "Wizz Air", "callsign": "WZZ1234", "route": "London Luton (EGGW) ➡️ Budapest (LHBP)", "duration": "2h20m"},
-    {"airline": "Wizz Air", "callsign": "WZZ4567", "route": "Warsaw Chopin (EPWA) ➡️ Barcelona (LEBL)", "duration": "2h50m"},
-    {"airline": "Wizz Air", "callsign": "WZZ7890", "route": "Budapest (LHBP) ➡️ Dubai Al Maktoum (OMDW)", "duration": "5h15m"},
-    {"airline": "Wizz Air", "callsign": "WZZ2345", "route": "Rome Fiumicino (LIRF) ➡️ Warsaw Modlin (EPMO)", "duration": "2h10m"},
-    {"airline": "Wizz Air", "callsign": "WZZ6789", "route": "Vienna (LOWW) ➡️ London Gatwick (EGKK)", "duration": "2h15m"},
-    {"airline": "Wizz Air", "callsign": "WZZ3456", "route": "Kyiv (UKKK) ➡️ Milan Bergamo (LIME)", "duration": "2h40m"},
-    {"airline": "Wizz Air", "callsign": "WZZ8901", "route": "Abu Dhabi (OMAA) ➡️ Athens (LGAV)", "duration": "4h45m"},
-    {"airline": "Wizz Air", "callsign": "WZZ1122", "route": "Bucharest (LROP) ➡️ London Luton (EGGW)", "duration": "3h10m"},
-    {"airline": "Wizz Air", "callsign": "WZZ3344", "route": "Sofia (LBSF) ➡️ Dortmund (EDLW)", "duration": "2h30m"},
-    {"airline": "Wizz Air", "callsign": "WZZ5566", "route": "Tel Aviv (LLBG) ➡️ Prague (LKPR)", "duration": "3h55m"},
-    {"airline": "Wizz Air", "callsign": "WZZ7788", "route": "Katowice (EPKT) ➡️ Reykjavik (BIKF)", "duration": "3h50m"},
-    {"airline": "Wizz Air", "callsign": "WZZ9900", "route": "Lisbon (LPPT) ➡️ Warsaw Chopin (EPWA)", "duration": "3h20m"},
-    {"airline": "Wizz Air", "callsign": "WZZ2233", "route": "Istanbul Sabiha (LTFJ) ➡️ Berlin Brandenburg (EDDB)", "duration": "2h55m"},
-    {"airline": "Wizz Air", "callsign": "WZZ4455", "route": "Tirana (LATI) ➡️ Memmingen (EDJA)", "duration": "1h45m"},
-    {"airline": "Wizz Air", "callsign": "WZZ6677", "route": "Malta (LMML) ➡️ Milan Malpensa (LIMC)", "duration": "1h50m"}
+    {"airline": "Condor", "callsign": "CFG2654", "route": "Frankfurt (EDDF) ➡️ Halifax (CYHZ)", "duration": "7h30m"}
 ]
 
 # ----- Persistent Data -----
@@ -290,7 +239,7 @@ def load_logs():
             with open(LOG_FILE, "r") as f:
                 return json.load(f)
         except:
-            logger.warning("⚠️ Could not read pilot_logs.json, starting fresh.")
+            print("⚠️ Could not read pilot_logs.json, starting fresh.")
     return {}
 
 def save_logs():
@@ -298,7 +247,7 @@ def save_logs():
         with open(LOG_FILE, "w") as f:
             json.dump(pilot_logs, f, indent=4)
     except Exception as e:
-        logger.error(f"Error saving logs: {e}")
+        print(f"Error saving logs: {e}")
 
 pilot_logs = load_logs()
 
@@ -328,15 +277,17 @@ def assign_aircraft(contract):
     longs = AIRCRAFTS.get(airline, {}).get("long", [])
 
     if total_minutes <= 180:
+        # prefer short-haul fleet, fallback to long if none
         return random.choice(shorts) if shorts else (random.choice(longs) if longs else "Unknown")
     else:
+        # prefer long-haul fleet, fallback to short if none
         return random.choice(longs) if longs else (random.choice(shorts) if shorts else "Unknown")
 
 def build_contract_embed(contract, status="available", user=None):
     airline = contract["airline"]
     color = AIRLINE_COLORS.get(airline, discord.Color.blue())
-    aircraft = assign_aircraft(contract)
-    callsign = maybe_add_phonetic_suffix(contract["callsign"])
+    aircraft = contract.get("assigned_aircraft") or assign_aircraft(contract)
+    callsign = contract.get("display_callsign", contract["callsign"])
 
     if status == "expired":
         title = "❌ Contract Expired"
@@ -396,12 +347,16 @@ class AcceptButton(discord.ui.View):
         embed = build_contract_embed(self.contract, "accepted", user)
         await interaction.message.edit(embed=embed, view=None)
 
-        # Create SimBrief URL
+        # ----- Enhanced DM with pre-filled SimBrief -----
+        # Extract airport codes from the route
         route_parts = self.contract["route"].split(" ➡️ ")
         if len(route_parts) == 2:
+            # Extract departure airport code (text between last space and closing parenthesis)
             dep_match = route_parts[0].split("(")[-1].replace(")", "")
+            # Extract arrival airport code (text between last space and closing parenthesis)
             arr_match = route_parts[1].split("(")[-1].replace(")", "")
             
+            # Define airline codes mapping
             airline_codes = {
                 "Lufthansa": "DLH",
                 "TAP": "TAP", 
@@ -410,24 +365,27 @@ class AcceptButton(discord.ui.View):
                 "Emirates": "UAE",
                 "Eurowings": "EWG",
                 "KLM": "KLM",
-                "Condor": "CFG",
-                "Wizz Air": "WZZ"
+                "Condor": "CFG"
             }
             
             airline_code = airline_codes.get(self.contract["airline"], "")
+            
+            # Extract flight number (remove airline code from callsign)
             flight_number = self.contract["callsign"].replace(airline_code, "").strip()
+            
+            # Create the pre-filled SimBrief URL
             simbrief_url = f"https://dispatch.simbrief.com/options/custom?orig={dep_match}&dest={arr_match}&airline={airline_code}&fltnum={flight_number}"
         else:
+            # Fallback to the generic link if route format is unexpected
             simbrief_url = "https://dispatch.simbrief.com/options/new"
 
-        aircraft = assign_aircraft(self.contract)
-        
+        aircraft = self.contract.get("assigned_aircraft") or assign_aircraft(self.contract)
         embed_dm = discord.Embed(
             title=f"✈️ Contract Accepted: **{self.contract['callsign']}**",
             color=discord.Color.green()
         )
         embed_dm.add_field(name="🏢 Airline", value=f"**{self.contract['airline']}**", inline=False)
-        embed_dm.add_field(name="🔢 Callsign", value=f"**{maybe_add_phonetic_suffix(self.contract['callsign'])}**", inline=True)
+        embed_dm.add_field(name="🔢 Callsign", value=f"**{self.contract.get('display_callsign', self.contract['callsign'])}**", inline=True)
         embed_dm.add_field(name="🗺️ Route", value=f"**{self.contract['route']}**", inline=False)
         embed_dm.add_field(name="⏱️ Duration", value=f"**{self.contract['duration']}**", inline=True)
         embed_dm.add_field(name="🛫 Aircraft", value=f"**{aircraft}**", inline=True)
@@ -459,21 +417,22 @@ async def handle_contract_expiration(message_id, channel):
             message = await channel.fetch_message(message_id)
             expired_embed = build_contract_embed(data["contract"], "expired")
             await message.edit(embed=expired_embed, view=None)
-            logger.info(f"Contract {message_id} expired.")
+            print(f"Contract {message_id} expired.")
         except Exception as e:
-            logger.error(f"Error expiring contract: {e}")
+            print(f"Error expiring contract: {e}")
 
     await asyncio.sleep(20 * 60)  # Delete 20 min later (total 1 hour)
     try:
         message = await channel.fetch_message(message_id)
         await message.delete()
         locked_contracts.pop(message_id, None)
-        logger.info(f"Contract {message_id} deleted after 1 hour.")
+        print(f"Contract {message_id} deleted after 1 hour.")
     except Exception as e:
-        logger.error(f"Error deleting contract: {e}")
+        print(f"Error deleting contract: {e}")
 
 # ----- Contract Sending -----
 async def send_contract_to_channel(channel, contract):
+    contract["assigned_aircraft"] = assign_aircraft(contract)
     contract["display_callsign"] = maybe_add_phonetic_suffix(contract["callsign"])
     
     guild = channel.guild
@@ -519,44 +478,15 @@ async def logbook(interaction: discord.Interaction):
 # ----- Events -----
 @bot.event
 async def on_ready():
-    logger.info(f"✅ Bot is online as {bot.user}!")
+    print(f"✅ Bot is online as {bot.user}!")
 
     if not send_contract_loop.is_running():
         send_contract_loop.start()
 
     await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
-    logger.info("✅ Commands synced successfully!")
+    print("✅ Commands synced successfully!")
 
-# ----- Run Bot -----
+# ----- Run Bot + Webserver -----
 if __name__ == "__main__":
-    # Start the web server in a separate process with NO logging
-    def run_server():
-        # CRITICAL: Run uvicorn with NO logging enabled
-        config = uvicorn.Config(
-            app, 
-            host="0.0.0.0", 
-            port=PORT, 
-            log_level=None,  # Disable all uvicorn logging
-            access_log=False,  # Disable access logs
-            log_config=None  # No log config at all
-        )
-        server = uvicorn.Server(config)
-        
-        # Log the startup ourselves
-        logger.info(f"🌐 Web server starting on http://0.0.0.0:{PORT}")
-        
-        server.run()
-    
-    # Start web server in background thread
-    import multiprocessing
-    server_process = multiprocessing.Process(target=run_server)
-    server_process.daemon = True
-    server_process.start()
-    
-    # Give web server a moment to start
-    time.sleep(2)
-    
-    # Start Discord bot in main process
-    logger.info("🤖 Starting Discord bot...")
+    threading.Thread(target=run_webserver, daemon=True).start()
     bot.run(TOKEN)
-
