@@ -9,6 +9,13 @@ from dotenv import load_dotenv
 import discord
 from discord.ext import tasks, commands
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+# Log what Uvicorn is doing
+logger.info("About to start Uvicorn...")
+
 # ----- FastAPI Web Server for UptimeRobot -----
 from fastapi import FastAPI
 import uvicorn
@@ -521,3 +528,4 @@ if __name__ == "__main__":
     # Start Discord bot in main process
     print("🤖 Starting Discord bot...")
     bot.run(TOKEN)
+
