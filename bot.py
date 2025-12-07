@@ -527,3 +527,4 @@ if __name__ == "__main__":
     
     # Start Discord bot in main process
     print("🤖 Starting Discord bot...")
+
