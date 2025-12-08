@@ -27,10 +27,22 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", 0))
 GUILD_ID = int(os.getenv("GUILD_ID", 0))
 COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 2 * 60 * 60))
-PORT = int(os.getenv("PORT", 8080))
+PORT = int(os.getenv("PORT", 10000))
+
+# Debug: Print environment variables
+print("=" * 50)
+print(f"Token exists: {bool(TOKEN)}")
+print(f"Token length: {len(TOKEN) if TOKEN else 0}")
+print(f"Channel ID: {CHANNEL_ID}")
+print(f"Guild ID: {GUILD_ID}")
+print(f"Port: {PORT}")
+print("=" * 50)
 
 if not TOKEN or CHANNEL_ID == 0 or GUILD_ID == 0:
     print("❌ ERROR: Missing environment variables (DISCORD_TOKEN / CHANNEL_ID / GUILD_ID)")
+    print(f"   TOKEN: {bool(TOKEN)}")
+    print(f"   CHANNEL_ID: {CHANNEL_ID}")
+    print(f"   GUILD_ID: {GUILD_ID}")
     exit(1)
 
 print("🚀 Starting Flight Dispatcher Bot...")
@@ -511,19 +523,20 @@ async def on_ready():
 
 # ----- Run Bot -----
 if __name__ == "__main__":
-    # Start the web server in a separate process
-    def run_server():
+    # Start the web server in a separate thread
+    import threading
+    
+    def run_web_server():
         uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")
     
     # Start web server in background thread
-    import multiprocessing
-    server_process = multiprocessing.Process(target=run_server)
-    server_process.daemon = True
-    server_process.start()
+    server_thread = threading.Thread(target=run_web_server, daemon=True)
+    server_thread.start()
     print(f"🌐 Web server started on port {PORT}")
     
     # Give web server a moment to start
     time.sleep(2)
     
-    # Start Discord bot in main process
+    # Actually start the Discord bot
     print("🤖 Starting Discord bot...")
+    bot.run(TOKEN)  # This line was missing!
