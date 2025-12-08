@@ -13,11 +13,8 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Log what Uvicorn is doing
-logger.info("About to start Uvicorn...")
-
 # ----- FastAPI Web Server for UptimeRobot -----
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 import uvicorn
 
 # ----- Load Environment Variables -----
@@ -50,13 +47,14 @@ print("🚀 Starting Flight Dispatcher Bot...")
 # ----- FastAPI App -----
 app = FastAPI()
 
-@app.get("/")
-def read_root():
-    return {"status": "Flight Dispatcher Bot is running!"}
-
-@app.get("/health")
-def health_check():
-    return {"status": "healthy", "timestamp": time.time()}
+@app.api_route("/", methods=["GET", "HEAD", "POST", "OPTIONS"])
+@app.api_route("/health", methods=["GET", "HEAD", "POST", "OPTIONS"])
+async def read_root(request: Request):
+    """Handle all HTTP methods for uptime monitoring"""
+    if request.method == "HEAD":
+        # Return empty response for HEAD requests
+        return ""
+    return {"status": "Flight Dispatcher Bot is running!", "timestamp": time.time()}
 
 # ----- Discord Setup -----
 intents = discord.Intents.default()
@@ -114,8 +112,9 @@ def maybe_add_phonetic_suffix(callsign):
     return callsign
 
 # ----- Contracts -----
+# PASTE YOUR CONTRACTS HERE
 contracts = [
-    # Lufthansa (15 routes)
+ # Lufthansa (15 routes)
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
     {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
     {"airline": "Lufthansa", "callsign": "DLH456", "route": "Frankfurt (EDDF) ➡️ Singapore (WSSS)", "duration": "12h30m"},
@@ -522,21 +521,40 @@ async def on_ready():
     print("✅ Commands synced successfully!")
 
 # ----- Run Bot -----
+def run_web_server():
+    """Run FastAPI web server"""
+    print(f"🌐 Starting FastAPI server on port {PORT}...")
+    uvicorn.run(
+        app, 
+        host="0.0.0.0", 
+        port=PORT, 
+        log_level="warning",
+        access_log=False
+    )
+
 if __name__ == "__main__":
-    # Start the web server in a separate thread
+    # Start web server in background thread
     import threading
     
-    def run_web_server():
-        uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")
+    print("=" * 50)
+    print("🚀 Starting Flight Dispatcher Bot...")
+    print("=" * 50)
     
-    # Start web server in background thread
-    server_thread = threading.Thread(target=run_web_server, daemon=True)
+    # Start web server thread
+    server_thread = threading.Thread(
+        target=run_web_server, 
+        daemon=True,
+        name="FastAPI-Server"
+    )
     server_thread.start()
-    print(f"🌐 Web server started on port {PORT}")
     
-    # Give web server a moment to start
+    # Give server time to start
     time.sleep(2)
     
-    # Actually start the Discord bot
+    # Start Discord bot (this will block)
     print("🤖 Starting Discord bot...")
-    bot.run(TOKEN)  # This line was missing!
+    try:
+        bot.run(TOKEN)
+    except Exception as e:
+        print(f"❌ Failed to start Discord bot: {e}")
+        exit(1)
