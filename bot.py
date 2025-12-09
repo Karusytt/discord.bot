@@ -75,7 +75,9 @@ ROLE_NAMES = {
     "Eurowings": "Eurowings Pilot",
     "KLM": "KLM Pilot",
     "Condor": "Condor Pilot",
-    "Wizz Air": "WizzAir Pilot"
+    "Wizz Air": "WizzAir Pilot",
+    "British Airways": "British Airways Pilot",
+    "TUI": "TUI Pilot"
 }
 
 AIRLINE_COLORS = {
@@ -87,19 +89,67 @@ AIRLINE_COLORS = {
     "Eurowings": discord.Color.from_str("#8F174F"),
     "KLM": discord.Color.from_str("#0052A1"),
     "Condor": discord.Color.from_str("#FFCC00"),
-    "Wizz Air": discord.Color.from_str("#DA291C")
+    "Wizz Air": discord.Color.from_str("#A020F0"),
+    "British Airways": discord.Color.from_str("#075AAA"),  # BA Blue
+    "TUI": discord.Color.from_str("#F0AB00")  # TUI Yellow
 }
 
 AIRCRAFTS = {
-    "Lufthansa": {"short": ["A319", "A320", "A321"], "long": ["A330", "A340", "A350", "B747", "B787"]},
-    "TAP": {"short": ["A319", "A320"], "long": ["A330", "A321LR"]},
-    "EasyJet": {"short": ["A319", "A320", "A321neo"], "long": []},
-    "Ryanair": {"short": ["B737-800", "B737 MAX 8-200"], "long": []},
-    "Emirates": {"short": [], "long": ["B777-300ER", "A380", "B787-9", "A350-900"]},
-    "Eurowings": {"short": ["A319", "A320", "A321"], "long": []},
-    "KLM": {"short": ["E175", "E190", "E195", "B737-700", "B737-800", "B737-900"], "long": ["B777-200", "B777-300", "B787-9", "B787-10", "A330-200", "A330-300"]},
-    "Condor": {"short": ["A320", "A321"], "long": ["A330-900", "B767-300", "B757-300"]},
-    "Wizz Air": {"short": ["A320", "A321", "A320neo", "A321neo"], "long": []}
+    "Lufthansa": {
+        "short": ["A319", "A320", "A321"], 
+        "medium": ["A320neo", "A321neo"],
+        "long": ["A330", "A340", "A350", "B747", "B787"]
+    },
+    "TAP": {
+        "short": ["A319", "A320"], 
+        "medium": ["A320neo", "A321neo"],
+        "long": ["A330", "A321LR"]
+    },
+    "EasyJet": {
+        "short": ["A319", "A320", "A321neo"], 
+        "medium": ["A320neo", "A321neo"],
+        "long": []
+    },
+    "Ryanair": {
+        "short": ["B737-800", "B737 MAX 8-200"], 
+        "medium": ["B737-800", "B737 MAX 8-200"],
+        "long": []
+    },
+    "Emirates": {
+        "short": [], 
+        "medium": ["B777-300ER"],
+        "long": ["B777-300ER", "A380", "B787-9", "A350-900"]
+    },
+    "Eurowings": {
+        "short": ["A319", "A320", "A321"], 
+        "medium": ["A320", "A321"],
+        "long": []
+    },
+    "KLM": {
+        "short": ["E175", "E190", "E195", "B737-700", "B737-800", "B737-900"], 
+        "medium": ["B737-800", "B737-900", "B787-9"],
+        "long": ["B777-200", "B777-300", "B787-9", "B787-10", "A330-200", "A330-300"]
+    },
+    "Condor": {
+        "short": ["A320", "A321"], 
+        "medium": ["A330-900", "B767-300"],
+        "long": ["A330-900", "B767-300", "B757-300"]
+    },
+    "Wizz Air": {
+        "short": ["A320", "A321", "A320neo", "A321neo"], 
+        "medium": ["A321neo"],
+        "long": []
+    },
+    "British Airways": {
+        "short": ["A319", "A320", "A321", "B737-400", "A318"],
+        "medium": ["A320neo", "A321neo", "B787-8", "A330-200"],
+        "long": ["A350-1000", "B777-300ER", "B787-9", "B787-10", "A380"]
+    },
+    "TUI": {
+        "short": ["B737-800", "B737 MAX 8"],
+        "medium": ["B737 MAX 8", "B757-200", "B767-300"],
+        "long": ["B787-8", "B787-9"]
+    }
 }
 
 PHONETIC_LETTERS = list("ABCDEFGHJKLMNPQRSTUVWXYZ")  # exclude I/O
@@ -114,7 +164,7 @@ def maybe_add_phonetic_suffix(callsign):
 # ----- Contracts -----
 # PASTE YOUR CONTRACTS HERE
 contracts = [
- # Lufthansa (15 routes)
+# Lufthansa (15 routes)
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
     {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
     {"airline": "Lufthansa", "callsign": "DLH456", "route": "Frankfurt (EDDF) ➡️ Singapore (WSSS)", "duration": "12h30m"},
@@ -266,6 +316,40 @@ contracts = [
     {"airline": "Wizz Air", "callsign": "WZZ2233", "route": "Istanbul Sabiha (LTFJ) ➡️ Berlin Brandenburg (EDDB)", "duration": "2h55m"},
     {"airline": "Wizz Air", "callsign": "WZZ4455", "route": "Tirana (LATI) ➡️ Memmingen (EDJA)", "duration": "1h45m"},
     {"airline": "Wizz Air", "callsign": "WZZ6677", "route": "Malta (LMML) ➡️ Milan Malpensa (LIMC)", "duration": "1h50m"}
+
+        # British Airways - SHORT HAUL (5 flights, <3 hours)
+    {"airline": "British Airways", "callsign": "BAW854", "route": "London Heathrow (EGLL) ➡️ Amsterdam (EHAM)", "duration": "1h05m"},
+    {"airline": "British Airways", "callsign": "BAW562", "route": "London Heathrow (EGLL) ➡️ Paris Charles de Gaulle (LFPG)", "duration": "1h15m"},
+    {"airline": "British Airways", "callsign": "BAW762", "route": "London Heathrow (EGLL) ➡️ Frankfurt (EDDF)", "duration": "1h30m"},
+    {"airline": "British Airways", "callsign": "BAW1252", "route": "London Heathrow (EGLL) ➡️ Edinburgh (EGPH)", "duration": "1h25m"},
+    {"airline": "British Airways", "callsign": "BAW2662", "route": "London City (EGLC) ➡️ Amsterdam (EHAM)", "duration": "1h10m"},
+    {"airline": "British Airways", "callsign": "BAW588", "route": "London Heathrow (EGLL) ➡️ Cairo (HECA)", "duration": "4h45m"},
+    {"airline": "British Airways", "callsign": "BAW684", "route": "London Heathrow (EGLL) ➡️ Tel Aviv (LLBG)", "duration": "4h55m"},
+    {"airline": "British Airways", "callsign": "BAW798", "route": "London Heathrow (EGLL) ➡️ Moscow Domodedovo (UUDD)", "duration": "3h45m"},
+    {"airline": "British Airways", "callsign": "BAW894", "route": "London Heathrow (EGLL) ➡️ Istanbul (LTFM)", "duration": "3h35m"},
+    {"airline": "British Airways", "callsign": "BAW532", "route": "London Gatwick (EGKK) ➡️ Tenerife South (GCTS)", "duration": "4h15m"},
+    {"airline": "British Airways", "callsign": "BAW001", "route": "London Heathrow (EGLL) ➡️ New York JFK (KJFK)", "duration": "8h15m"},
+    {"airline": "British Airways", "callsign": "BAW011", "route": "London Heathrow (EGLL) ➡️ Singapore (WSSS)", "duration": "12h55m"},
+    {"airline": "British Airways", "callsign": "BAW178", "route": "London Heathrow (EGLL) ➡️ Dubai (OMDB)", "duration": "6h50m"},
+    {"airline": "British Airways", "callsign": "BAW005", "route": "London Heathrow (EGLL) ➡️ Tokyo Haneda (RJTT)", "duration": "11h30m"},
+    {"airline": "British Airways", "callsign": "BAW047", "route": "London Gatwick (EGKK) ➡️ Orlando (KMCO)", "duration": "9h15m"},
+
+    # TUI Airways - SHORT HAUL (5 flights, <3 hours)
+    {"airline": "TUI", "callsign": "TOM101", "route": "Manchester (EGCC) ➡️ Palma de Mallorca (LEPA)", "duration": "2h35m"},
+    {"airline": "TUI", "callsign": "TOM222", "route": "Birmingham (EGBB) ➡️ Alicante (LEAL)", "duration": "2h25m"},
+    {"airline": "TUI", "callsign": "TOM333", "route": "London Gatwick (EGKK) ➡️ Malaga (LEMG)", "duration": "2h45m"},
+    {"airline": "TUI", "callsign": "TOM444", "route": "Glasgow (EGPF) ➡️ Tenerife South (GCTS)", "duration": "4h15m"},
+    {"airline": "TUI", "callsign": "TOM555", "route": "Bristol (EGGD) ➡️ Fuerteventura (GCFV)", "duration": "4h05m"},
+    {"airline": "TUI", "callsign": "TOM666", "route": "Manchester (EGCC) ➡️ Antalya (LTAI)", "duration": "4h10m"},
+    {"airline": "TUI", "callsign": "TOM777", "route": "London Gatwick (EGKK) ➡️ Dalaman (LTBS)", "duration": "4h00m"},
+    {"airline": "TUI", "callsign": "TOM888", "route": "Birmingham (EGBB) ➡️ Enfidha (DTNH)", "duration": "3h00m"},
+    {"airline": "TUI", "callsign": "TOM999", "route": "London Stansted (EGSS) ➡️ Hurghada (HEGN)", "duration": "5h15m"},
+    {"airline": "TUI", "callsign": "TOM111", "route": "Manchester (EGCC) ➡️ Sharm El Sheikh (HESH)", "duration": "5h30m"},
+    {"airline": "TUI", "callsign": "TOM202", "route": "Manchester (EGCC) ➡️ Cancun (MMUN)", "duration": "9h45m"},
+    {"airline": "TUI", "callsign": "TOM303", "route": "London Gatwick (EGKK) ➡️ Mauritius (FIMP)", "duration": "12h00m"},
+    {"airline": "TUI", "callsign": "TOM404", "route": "Birmingham (EGBB) ➡️ Barbados (TBPB)", "duration": "8h30m"},
+    {"airline": "TUI", "callsign": "TOM505", "route": "Glasgow (EGPF) ➡️ Orlando (KMCO)", "duration": "9h20m"},
+    {"airline": "TUI", "callsign": "TOM606", "route": "Manchester (EGCC) ➡️ Phuket (VTSP)", "duration": "12h30m"},
 ]
 
 # ----- Persistent Data -----
@@ -317,13 +401,14 @@ def assign_aircraft(contract):
             minutes = 0
     total_minutes = hours * 60 + minutes
     airline = contract["airline"]
-    shorts = AIRCRAFTS.get(airline, {}).get("short", [])
-    longs = AIRCRAFTS.get(airline, {}).get("long", [])
-
-    if total_minutes <= 180:
-        return random.choice(shorts) if shorts else (random.choice(longs) if longs else "Unknown")
-    else:
-        return random.choice(longs) if longs else (random.choice(shorts) if shorts else "Unknown")
+    aircraft_types = AIRCRAFTS.get(airline, {})
+    
+    if total_minutes <= 180:  # Short haul (<3h)
+        return random.choice(aircraft_types.get("short", ["Unknown"]))
+    elif total_minutes <= 360:  # Medium haul (3-6h)
+        return random.choice(aircraft_types.get("medium", aircraft_types.get("short", ["Unknown"])))
+    else:  # Long haul (>6h)
+        return random.choice(aircraft_types.get("long", aircraft_types.get("medium", ["Unknown"])))
 
 def build_contract_embed(contract, status="available", user=None):
     airline = contract["airline"]
@@ -404,7 +489,9 @@ class AcceptButton(discord.ui.View):
                 "Eurowings": "EWG",
                 "KLM": "KLM",
                 "Condor": "CFG",
-                "Wizz Air": "WZZ"
+                "Wizz Air": "WZZ",
+                "British Airways": "BAW",
+                "TUI": "TOM"
             }
             
             airline_code = airline_codes.get(self.contract["airline"], "")
@@ -521,9 +608,8 @@ async def on_ready():
     print("✅ Commands synced successfully!")
 
 # ----- Run Bot -----
-def run_web_server():
-    """Run FastAPI web server"""
-    print(f"🌐 Starting FastAPI server on port {PORT}...")
+def start_fastapi():
+    """Start FastAPI server"""
     uvicorn.run(
         app, 
         host="0.0.0.0", 
@@ -533,7 +619,7 @@ def run_web_server():
     )
 
 if __name__ == "__main__":
-    # Start web server in background thread
+    # Start web server in a separate thread
     import threading
     
     print("=" * 50)
@@ -542,7 +628,7 @@ if __name__ == "__main__":
     
     # Start web server thread
     server_thread = threading.Thread(
-        target=run_web_server, 
+        target=start_fastapi, 
         daemon=True,
         name="FastAPI-Server"
     )
@@ -555,6 +641,9 @@ if __name__ == "__main__":
     print("🤖 Starting Discord bot...")
     try:
         bot.run(TOKEN)
+    except discord.LoginFailure:
+        print("❌ Invalid Discord token! Check your .env file")
+        exit(1)
     except Exception as e:
         print(f"❌ Failed to start Discord bot: {e}")
         exit(1)
