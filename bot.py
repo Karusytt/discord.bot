@@ -315,7 +315,7 @@ contracts = [
     {"airline": "Wizz Air", "callsign": "WZZ9900", "route": "Lisbon (LPPT) ➡️ Warsaw Chopin (EPWA)", "duration": "3h20m"},
     {"airline": "Wizz Air", "callsign": "WZZ2233", "route": "Istanbul Sabiha (LTFJ) ➡️ Berlin Brandenburg (EDDB)", "duration": "2h55m"},
     {"airline": "Wizz Air", "callsign": "WZZ4455", "route": "Tirana (LATI) ➡️ Memmingen (EDJA)", "duration": "1h45m"},
-    {"airline": "Wizz Air", "callsign": "WZZ6677", "route": "Malta (LMML) ➡️ Milan Malpensa (LIMC)", "duration": "1h50m"}
+    {"airline": "Wizz Air", "callsign": "WZZ6677", "route": "Malta (LMML) ➡️ Milan Malpensa (LIMC)", "duration": "1h50m"},
 
         # British Airways - SHORT HAUL (5 flights, <3 hours)
     {"airline": "British Airways", "callsign": "BAW854", "route": "London Heathrow (EGLL) ➡️ Amsterdam (EHAM)", "duration": "1h05m"},
@@ -647,3 +647,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"❌ Failed to start Discord bot: {e}")
         exit(1)
+
