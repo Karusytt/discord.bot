@@ -22,6 +22,7 @@ load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", 0))
+CARGO_CHANNEL_ID = int(os.getenv("CARGO_CHANNEL_ID", 0))
 GUILD_ID = int(os.getenv("GUILD_ID", 0))
 COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 2 * 60 * 60))
 PORT = int(os.getenv("PORT", 10000))
@@ -30,15 +31,17 @@ PORT = int(os.getenv("PORT", 10000))
 print("=" * 50)
 print(f"Token exists: {bool(TOKEN)}")
 print(f"Token length: {len(TOKEN) if TOKEN else 0}")
-print(f"Channel ID: {CHANNEL_ID}")
+print(f"Passenger Channel ID: {CHANNEL_ID}")
+print(f"Cargo Channel ID: {CARGO_CHANNEL_ID}")
 print(f"Guild ID: {GUILD_ID}")
 print(f"Port: {PORT}")
 print("=" * 50)
 
-if not TOKEN or CHANNEL_ID == 0 or GUILD_ID == 0:
-    print("❌ ERROR: Missing environment variables (DISCORD_TOKEN / CHANNEL_ID / GUILD_ID)")
+if not TOKEN or CHANNEL_ID == 0 or CARGO_CHANNEL_ID == 0 or GUILD_ID == 0:
+    print("❌ ERROR: Missing environment variables (DISCORD_TOKEN / CHANNEL_ID / CARGO_CHANNEL_ID / GUILD_ID)")
     print(f"   TOKEN: {bool(TOKEN)}")
     print(f"   CHANNEL_ID: {CHANNEL_ID}")
+    print(f"   CARGO_CHANNEL_ID: {CARGO_CHANNEL_ID}")
     print(f"   GUILD_ID: {GUILD_ID}")
     exit(1)
 
@@ -77,7 +80,8 @@ ROLE_NAMES = {
     "Condor": "Condor Pilot",
     "Wizz Air": "WizzAir Pilot",
     "British Airways": "British Airways Pilot",
-    "TUI": "TUI Pilot"
+    "TUI": "TUI Pilot",
+    "Cargolux": "Cargolux Pilot"
 }
 
 AIRLINE_COLORS = {
@@ -91,7 +95,8 @@ AIRLINE_COLORS = {
     "Condor": discord.Color.from_str("#FFCC00"),
     "Wizz Air": discord.Color.from_str("#A020F0"),
     "British Airways": discord.Color.from_str("#075AAA"),  # BA Blue
-    "TUI": discord.Color.from_str("#F0AB00")  # TUI Yellow
+    "TUI": discord.Color.from_str("#F0AB00"),  # TUI Yellow
+    "Cargolux": discord.Color.from_str("#FF6600")  # Cargolux Orange
 }
 
 AIRCRAFTS = {
@@ -149,6 +154,11 @@ AIRCRAFTS = {
         "short": ["B737-800", "B737 MAX 8"],
         "medium": ["B737 MAX 8", "B757-200", "B767-300"],
         "long": ["B787-8", "B787-9"]
+    },
+    "Cargolux": {
+        "short": ["B747-400F", "B747-8F"],
+        "medium": ["B747-400F", "B747-8F"],
+        "long": ["B747-8F", "B747-400F"]
     }
 }
 
@@ -162,9 +172,9 @@ def maybe_add_phonetic_suffix(callsign):
     return callsign
 
 # ----- Contracts -----
-# PASTE YOUR CONTRACTS HERE
-contracts = [
-# Lufthansa (15 routes)
+# Passenger Contracts
+passenger_contracts = [
+    # Lufthansa (15 routes)
     {"airline": "Lufthansa", "callsign": "DLH145", "route": "Frankfurt (EDDF) ➡️ New York (KJFK)", "duration": "8h15m"},
     {"airline": "Lufthansa", "callsign": "DLH302", "route": "Munich (EDDM) ➡️ Los Angeles (KLAX)", "duration": "11h30m"},
     {"airline": "Lufthansa", "callsign": "DLH456", "route": "Frankfurt (EDDF) ➡️ Singapore (WSSS)", "duration": "12h30m"},
@@ -300,7 +310,7 @@ contracts = [
     {"airline": "Condor", "callsign": "CFG2233", "route": "Munich (EDDM) ➡️ Portland (KPDX)", "duration": "11h30m"},
     {"airline": "Condor", "callsign": "CFG2654", "route": "Frankfurt (EDDF) ➡️ Halifax (CYHZ)", "duration": "7h30m"},
 
-    # Wizz Air (15 routes) - Added as requested
+    # Wizz Air (15 routes)
     {"airline": "Wizz Air", "callsign": "WZZ1234", "route": "London Luton (EGGW) ➡️ Budapest (LHBP)", "duration": "2h20m"},
     {"airline": "Wizz Air", "callsign": "WZZ4567", "route": "Warsaw Chopin (EPWA) ➡️ Barcelona (LEBL)", "duration": "2h50m"},
     {"airline": "Wizz Air", "callsign": "WZZ7890", "route": "Budapest (LHBP) ➡️ Dubai Al Maktoum (OMDW)", "duration": "5h15m"},
@@ -317,7 +327,7 @@ contracts = [
     {"airline": "Wizz Air", "callsign": "WZZ4455", "route": "Tirana (LATI) ➡️ Memmingen (EDJA)", "duration": "1h45m"},
     {"airline": "Wizz Air", "callsign": "WZZ6677", "route": "Malta (LMML) ➡️ Milan Malpensa (LIMC)", "duration": "1h50m"},
 
-        # British Airways - SHORT HAUL (5 flights, <3 hours)
+    # British Airways
     {"airline": "British Airways", "callsign": "BAW854", "route": "London Heathrow (EGLL) ➡️ Amsterdam (EHAM)", "duration": "1h05m"},
     {"airline": "British Airways", "callsign": "BAW562", "route": "London Heathrow (EGLL) ➡️ Paris Charles de Gaulle (LFPG)", "duration": "1h15m"},
     {"airline": "British Airways", "callsign": "BAW762", "route": "London Heathrow (EGLL) ➡️ Frankfurt (EDDF)", "duration": "1h30m"},
@@ -334,7 +344,7 @@ contracts = [
     {"airline": "British Airways", "callsign": "BAW005", "route": "London Heathrow (EGLL) ➡️ Tokyo Haneda (RJTT)", "duration": "11h30m"},
     {"airline": "British Airways", "callsign": "BAW047", "route": "London Gatwick (EGKK) ➡️ Orlando (KMCO)", "duration": "9h15m"},
 
-    # TUI Airways - SHORT HAUL (5 flights, <3 hours)
+    # TUI Airways
     {"airline": "TUI", "callsign": "TOM101", "route": "Manchester (EGCC) ➡️ Palma de Mallorca (LEPA)", "duration": "2h35m"},
     {"airline": "TUI", "callsign": "TOM222", "route": "Birmingham (EGBB) ➡️ Alicante (LEAL)", "duration": "2h25m"},
     {"airline": "TUI", "callsign": "TOM333", "route": "London Gatwick (EGKK) ➡️ Malaga (LEMG)", "duration": "2h45m"},
@@ -351,6 +361,29 @@ contracts = [
     {"airline": "TUI", "callsign": "TOM505", "route": "Glasgow (EGPF) ➡️ Orlando (KMCO)", "duration": "9h20m"},
     {"airline": "TUI", "callsign": "TOM606", "route": "Manchester (EGCC) ➡️ Phuket (VTSP)", "duration": "12h30m"},
 ]
+
+# Cargo Contracts
+cargo_contracts = [
+    # Cargolux - Cargo Airlines (15 routes)
+    {"airline": "Cargolux", "callsign": "CLX753V", "route": "Luxembourg (ELLX) ➡️ New York JFK (KJFK)", "duration": "8h30m"},
+    {"airline": "Cargolux", "callsign": "CLX721", "route": "Hong Kong (VHHH) ➡️ Luxembourg (ELLX)", "duration": "13h45m"},
+    {"airline": "Cargolux", "callsign": "CLX788", "route": "Chicago O'Hare (KORD) ➡️ Luxembourg (ELLX)", "duration": "8h15m"},
+    {"airline": "Cargolux", "callsign": "CLX789", "route": "Luxembourg (ELLX) ➡️ Chicago O'Hare (KORD)", "duration": "9h00m"},
+    {"airline": "Cargolux", "callsign": "CLX761", "route": "Shanghai Pudong (ZSPD) ➡️ Luxembourg (ELLX)", "duration": "12h20m"},
+    {"airline": "Cargolux", "callsign": "CLX762", "route": "Luxembourg (ELLX) ➡️ Shanghai Pudong (ZSPD)", "duration": "11h50m"},
+    {"airline": "Cargolux", "callsign": "CLX726", "route": "Singapore (WSSS) ➡️ Luxembourg (ELLX)", "duration": "13h10m"},
+    {"airline": "Cargolux", "callsign": "CLX727", "route": "Luxembourg (ELLX) ➡️ Singapore (WSSS)", "duration": "12h45m"},
+    {"airline": "Cargolux", "callsign": "CLX745", "route": "Tokyo Narita (RJAA) ➡️ Luxembourg (ELLX)", "duration": "12h05m"},
+    {"airline": "Cargolux", "callsign": "CLX746", "route": "Luxembourg (ELLX) ➡️ Tokyo Narita (RJAA)", "duration": "11h30m"},
+    {"airline": "Cargolux", "callsign": "CLX702", "route": "Los Angeles (KLAX) ➡️ Luxembourg (ELLX)", "duration": "10h45m"},
+    {"airline": "Cargolux", "callsign": "CLX703", "route": "Luxembourg (ELLX) ➡️ Los Angeles (KLAX)", "duration": "11h20m"},
+    {"airline": "Cargolux", "callsign": "CLX710", "route": "Miami (KMIA) ➡️ Luxembourg (ELLX)", "duration": "9h15m"},
+    {"airline": "Cargolux", "callsign": "CLX711", "route": "Luxembourg (ELLX) ➡️ Miami (KMIA)", "duration": "10h00m"},
+    {"airline": "Cargolux", "callsign": "CLX732", "route": "Dubai (OMDB) ➡️ Luxembourg (ELLX)", "duration": "6h45m"},
+]
+
+# Combined contracts for backward compatibility
+contracts = passenger_contracts + cargo_contracts
 
 # ----- Persistent Data -----
 locked_contracts = {}
@@ -491,7 +524,8 @@ class AcceptButton(discord.ui.View):
                 "Condor": "CFG",
                 "Wizz Air": "WZZ",
                 "British Airways": "BAW",
-                "TUI": "TOM"
+                "TUI": "TOM",
+                "Cargolux": "CLX"
             }
             
             airline_code = airline_codes.get(self.contract["airline"], "")
@@ -565,18 +599,35 @@ async def send_contract_to_channel(channel, contract):
     locked_contracts[msg.id] = {"contract": contract, "accepted_by": None}
     asyncio.create_task(handle_contract_expiration(msg.id, channel))
 
-# ----- Background Loop (1-5 min) -----
+# ----- Background Loops -----
 @tasks.loop(seconds=1)
-async def send_contract_loop():
-    global last_sent_contract
+async def send_passenger_contract_loop():
+    """Send contracts to passenger channel"""
     channel = bot.get_channel(CHANNEL_ID)
     if not channel:
         return
-    available_contracts = [c for c in contracts if c != last_sent_contract]
-    contract = random.choice(available_contracts or contracts)
-    last_sent_contract = contract
+    
+    global last_sent_contract
+    available_contracts = [c for c in passenger_contracts if c != getattr(send_passenger_contract_loop, 'last_sent', None)]
+    contract = random.choice(available_contracts or passenger_contracts)
+    send_passenger_contract_loop.last_sent = contract
+    
     await send_contract_to_channel(channel, contract)
     await asyncio.sleep(random.randint(60, 300))  # 1-5 minutes
+
+@tasks.loop(seconds=1)
+async def send_cargo_contract_loop():
+    """Send contracts to cargo channel"""
+    channel = bot.get_channel(CARGO_CHANNEL_ID)
+    if not channel:
+        return
+    
+    available_contracts = [c for c in cargo_contracts if c != getattr(send_cargo_contract_loop, 'last_sent', None)]
+    contract = random.choice(available_contracts or cargo_contracts)
+    send_cargo_contract_loop.last_sent = contract
+    
+    await send_contract_to_channel(channel, contract)
+    await asyncio.sleep(random.randint(120, 360))  # 2-6 minutes for cargo
 
 # ----- Logbook Command -----
 @bot.tree.command(name="logbook", description="Show your pilot logbook", guild=discord.Object(id=GUILD_ID))
@@ -601,11 +652,18 @@ async def logbook(interaction: discord.Interaction):
 async def on_ready():
     print(f"✅ Bot is online as {bot.user}!")
 
-    if not send_contract_loop.is_running():
-        send_contract_loop.start()
+    # Start both contract loops
+    if not send_passenger_contract_loop.is_running():
+        send_passenger_contract_loop.start()
+    
+    if not send_cargo_contract_loop.is_running():
+        send_cargo_contract_loop.start()
 
     await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
     print("✅ Commands synced successfully!")
+    print(f"📊 Channels configured:")
+    print(f"   Passenger: {CHANNEL_ID}")
+    print(f"   Cargo: {CARGO_CHANNEL_ID}")
 
 # ----- Run Bot -----
 def start_fastapi():
@@ -620,8 +678,6 @@ def start_fastapi():
 
 if __name__ == "__main__":
     # Start web server in a separate thread
-    import threading
-    
     print("=" * 50)
     print("🚀 Starting Flight Dispatcher Bot...")
     print("=" * 50)
@@ -647,4 +703,3 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"❌ Failed to start Discord bot: {e}")
         exit(1)
-
