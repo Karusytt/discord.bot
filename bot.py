@@ -564,6 +564,7 @@ class AcceptButton(discord.ui.View):
 # ----- Expiration Handler -----
 async def handle_contract_expiration(message_id, channel):
     await asyncio.sleep(40 * 60)  # Expire after 40 mins
+    
     data = locked_contracts.get(message_id)
     if not data:
         return
@@ -576,8 +577,10 @@ async def handle_contract_expiration(message_id, channel):
             print(f"Contract {message_id} expired.")
         except Exception as e:
             print(f"Error expiring contract: {e}")
-
-    await asyncio.sleep(20 * 60)  # Delete 20 min later (total 1 hour)
+    
+    # Wait an additional 20 minutes before deletion (total 1 hour)
+    await asyncio.sleep(20 * 60)
+    
     try:
         message = await channel.fetch_message(message_id)
         await message.delete()
@@ -703,3 +706,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"❌ Failed to start Discord bot: {e}")
         exit(1)
+
