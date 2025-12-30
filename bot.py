@@ -608,13 +608,18 @@ async def send_passenger_contract_loop():
     """Send contracts to passenger channel"""
     channel = bot.get_channel(CHANNEL_ID)
     if not channel:
+        print(f"❌ Cannot find passenger channel with ID: {CHANNEL_ID}")
         return
     
     global last_sent_contract
-    available_contracts = [c for c in passenger_contracts if c != getattr(send_passenger_contract_loop, 'last_sent', None)]
-    contract = random.choice(available_contracts or passenger_contracts)
-    send_passenger_contract_loop.last_sent = contract
+    available_contracts = [c for c in passenger_contracts if c != last_sent_contract]
+    if not available_contracts:
+        available_contracts = passenger_contracts
     
+    contract = random.choice(available_contracts)
+    last_sent_contract = contract
+    
+    print(f"📝 Sending passenger contract: {contract['callsign']} ({contract['airline']})")
     await send_contract_to_channel(channel, contract)
     await asyncio.sleep(random.randint(60, 300))  # 1-5 minutes
 
@@ -623,12 +628,21 @@ async def send_cargo_contract_loop():
     """Send contracts to cargo channel"""
     channel = bot.get_channel(CARGO_CHANNEL_ID)
     if not channel:
+        print(f"❌ Cannot find cargo channel with ID: {CARGO_CHANNEL_ID}")
         return
     
-    available_contracts = [c for c in cargo_contracts if c != getattr(send_cargo_contract_loop, 'last_sent', None)]
-    contract = random.choice(available_contracts or cargo_contracts)
+    # Use a separate variable for cargo last sent
+    if not hasattr(send_cargo_contract_loop, 'last_sent'):
+        send_cargo_contract_loop.last_sent = None
+    
+    available_contracts = [c for c in cargo_contracts if c != send_cargo_contract_loop.last_sent]
+    if not available_contracts:
+        available_contracts = cargo_contracts
+    
+    contract = random.choice(available_contracts)
     send_cargo_contract_loop.last_sent = contract
     
+    print(f"📦 Sending cargo contract: {contract['callsign']} ({contract['airline']})")
     await send_contract_to_channel(channel, contract)
     await asyncio.sleep(random.randint(120, 360))  # 2-6 minutes for cargo
 
@@ -654,20 +668,32 @@ async def logbook(interaction: discord.Interaction):
 @bot.event
 async def on_ready():
     print(f"✅ Bot is online as {bot.user}!")
+    
+    # Debug: Check if channels are accessible
+    passenger_channel = bot.get_channel(CHANNEL_ID)
+    cargo_channel = bot.get_channel(CARGO_CHANNEL_ID)
+    
+    print(f"🔍 Channel check:")
+    print(f"   Passenger channel: {passenger_channel} (ID: {CHANNEL_ID})")
+    print(f"   Cargo channel: {cargo_channel} (ID: {CARGO_CHANNEL_ID})")
+    
+    if not passenger_channel:
+        print("❌ WARNING: Cannot access passenger channel!")
+    if not cargo_channel:
+        print("❌ WARNING: Cannot access cargo channel!")
 
     # Start both contract loops
     if not send_passenger_contract_loop.is_running():
         send_passenger_contract_loop.start()
+        print("🔄 Started passenger contract loop")
     
     if not send_cargo_contract_loop.is_running():
         send_cargo_contract_loop.start()
+        print("🔄 Started cargo contract loop")
 
     await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
     print("✅ Commands synced successfully!")
-    print(f"📊 Channels configured:")
-    print(f"   Passenger: {CHANNEL_ID}")
-    print(f"   Cargo: {CARGO_CHANNEL_ID}")
-
+    
 # ----- Run Bot -----
 def start_fastapi():
     """Start FastAPI server"""
@@ -706,4 +732,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"❌ Failed to start Discord bot: {e}")
         exit(1)
+
 
